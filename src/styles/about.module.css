@@ -1,0 +1,146 @@
+.about {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.content {
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  left: 196px;
+  transform: translateY(-50%);
+  width: min(340px, calc(58vw - 220px));
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 3dvh, 30px);
+}
+.art {
+  position: absolute;
+  right: -10vw;
+  top: 0;
+  bottom: 0;
+  width: 65vw;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.art svg {
+  height: min(92dvh, 1000px);
+}
+.content h2 {
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 500;
+  letter-spacing: -1.8px;
+  line-height: 1.15;
+}
+.preferences {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 22px;
+}
+.language h3 {
+  font: 500 13px var(--font-sans);
+  margin-bottom: 10px;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+.links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.links a {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  opacity: 0.65;
+  transition: opacity 120ms;
+  border-radius: 6px;
+}
+.links a:hover,
+.links a:focus-visible {
+  opacity: 1;
+}
+.links img {
+  object-fit: contain;
+}
+:global(.dark) .github {
+  filter: invert(1);
+}
+.credits {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+}
+.wordmark {
+  position: absolute;
+  bottom: 0;
+  left: 100px;
+  height: 0.7em;
+  overflow: hidden;
+  pointer-events: auto;
+  font: 700 clamp(90px, 19vw, 300px)/0.82 var(--font-heading);
+  letter-spacing: -0.09em;
+  padding-right: 0.14em;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--foreground) 15%, transparent),
+    transparent 93%
+  );
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+@media (max-width: 760px) {
+  .art {
+    width: 90vw;
+    top: 8dvh;
+    right: -28vw;
+    transform: none;
+  }
+  .art svg {
+    height: 45dvh;
+  }
+  .content {
+    left: 30px;
+    top: auto;
+    bottom: clamp(125px, 18dvh, 180px);
+    transform: none;
+    width: calc(100% - 60px);
+    gap: 22px;
+  }
+  .content h2 {
+    font-size: 32px;
+  }
+  .wordmark {
+    left: 28px;
+    font-size: clamp(72px, 20vw, 140px);
+  }
+}
+@media (max-height: 540px) {
+  .content {
+    gap: 14px;
+  }
+  .content h2 {
+    font-size: 28px;
+  }
+  .preferences {
+    gap: 14px;
+  }
+  .language h3 {
+    margin-bottom: 6px;
+  }
+  .wordmark {
+    font-size: clamp(64px, 13vw, 130px);
+  }
+}

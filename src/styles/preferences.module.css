@@ -1,0 +1,58 @@
+.group {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  grid-template-columns: repeat(var(--segments), minmax(0, 1fr));
+  gap: 0;
+  width: max-content;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid var(--control-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--secondary) 75%, transparent);
+}
+.group > button {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 11px;
+  gap: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  font: 500 13px var(--font-ui);
+  color: var(--muted-foreground);
+  transition: color 140ms;
+}
+.group > button:hover {
+  color: var(--foreground);
+}
+.group > button[aria-pressed="true"] {
+  background: transparent;
+  color: var(--primary-foreground);
+}
+.indicator {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--segments));
+  border-radius: 8px;
+  background: var(--primary);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+@media (max-width: 760px) {
+  .group > button {
+    padding-inline: 5px;
+    gap: 4px;
+    font-size: 12px;
+  }
+  .group > button > svg {
+    width: 13px;
+    height: 13px;
+  }
+}

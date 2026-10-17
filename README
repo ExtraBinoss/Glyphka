@@ -1,0 +1,75 @@
+Glyphka
+
+A generative lettering and symbol studio by Plinka.
+
+Run
+  bun install --frozen-lockfile
+  bun run dev
+
+Development uses port 8401. The application builds independently of any
+other checkout.
+
+Check
+  bun run check
+  bun run test:browser
+
+Build
+  bun run build
+
+The static site is generated in dist/.
+
+Lettering
+  A-Z, digits and . - +. Sixteen visual families. Continuous mutation,
+  weight, rounding, width, slant, spacing and transparent cutouts.
+  The die generates another direction. Each letter has further drawings
+  through the More drawings control.
+
+Shapes
+  Twenty-two starting forms, including superforms, rosettes, organic curves,
+  spirals and waves. Edit branches, inset, tension, twist and irregularity.
+  There is no fixed limit of 48 parts. Each generated form remains editable.
+  Drag to move; corner handles resize; the top handle rotates.
+  Shift preserves proportions or snaps rotation to 15-degree steps.
+  Arrow keys move the selected part; Shift increases the step; Delete removes.
+
+3D
+  Switch between 2D and 3D for lettering, symbols or compositions.
+  Drag to orbit, scroll to zoom. Adjust extrusion, bevel, rotation, material,
+  side color, outline, lighting, shadows and background in the render panel.
+  Boolean contour operations preserve vector cutouts in the actual mesh.
+  Geometry is generated in a worker. Rendering sleeps while the scene is
+  still and stops when the tab is hidden. The 3D module loads on demand.
+
+Exports
+  Standalone SVG paths and masks without fonts. Transparent 2D PNG at 2x.
+  The 3D PNG captures the current camera, material and lighting.
+  Ctrl/Cmd+Z undoes; Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y redoes.
+  Designs, render settings and custom colors stay in local browser storage.
+
+Stack
+  React 19, React Compiler, TypeScript, Vite, Bun, Jotai, shadcn/Base UI,
+  Tailwind CSS, Motion, i18next and Three.js. Fonts are served locally.
+
+Cloudflare
+  Pages Direct Upload project: glyphka-plinka.
+  Checks run on main pushes and pull requests. Publishing requires a push
+  to main by ExtraBinoss with [PUBLISH] in the latest commit message.
+  All checks must pass. The deployment uses the verified build artifact.
+  Pull requests and manual check runs do not deploy.
+
+  Required repository Actions secrets:
+    CLOUDFLARE_API_TOKEN
+    CLOUDFLARE_ACCOUNT_ID
+
+  Configuration: wrangler.jsonc and .github/workflows/ci.yml.
+  No credentials are stored in this repository.
+
+Inspiration
+  Paul Nicholson's constructions and lettering for Aphex Twin.
+  The associated lettering is known as Xylem. Glyphka uses its own generated
+  alphabet and parametric geometry.
+
+  https://www.monotype.com/resources/special-aphex-twin-logo
+  https://www.factmag.com/2017/02/21/aphex-twin-logo-designer-paul-nicholson-shares-blueprints-iconic-design/
+
+Third-party notices are available in public/licenses/NOTICE.txt.

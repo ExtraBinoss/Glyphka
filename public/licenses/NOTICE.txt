@@ -1,0 +1,16 @@
+Glyphka
+
+A generative lettering and symbol studio by Plinka.
+
+Inspiration: Paul Nicholson's geometric constructions and lettering for
+Aphex Twin. The associated lettering is known as Xylem. Glyphka uses an
+original code-generated alphabet and procedural geometry.
+
+Reference: https://www.monotype.com/resources/special-aphex-twin-logo
+Reference: https://www.factmag.com/2017/02/21/aphex-twin-logo-designer-paul-nicholson-shares-blueprints-iconic-design/
+
+Third-party software:
+ReUI color picker — MIT (ReUI-LICENSE.txt)
+Three.js — MIT (Three-LICENSE.txt)
+JavaScript Clipper — Boost Software License 1.0 (Clipper-LICENSE.txt)
+shadcn/ui — MIT (shadcn-LICENSE.txt)

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Glyphka — an experimental geometric lettering studio. Shape a wordmark, explore symbols, and export your own vector identity."
+    />
+    <meta name="theme-color" content="#fbfbfd" />
+    <script>
+      try {
+        const theme = localStorage.getItem("glyphka.theme") || "system";
+        const dark =
+          theme === "dark" ||
+          (theme === "system" &&
+            matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+        document.querySelector('meta[name="theme-color"]').content = dark
+          ? "#1c1c1e"
+          : "#fbfbfd";
+      } catch {
+        document.documentElement.classList.toggle(
+          "dark",
+          matchMedia("(prefers-color-scheme: dark)").matches,
+        );
+      }
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Glyphka — Shape your own language</title>
+    <style>
+      html {
+        background: #fbfbfd;
+        color-scheme: light;
+      }
+      html.dark {
+        background: #1c1c1e;
+        color-scheme: dark;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
