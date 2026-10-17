@@ -157,6 +157,7 @@
 }
 .drawing-area {
   width: 100%;
+  height: 100%;
   padding: 50px 10px;
   overflow: visible;
   display: flex;
@@ -166,6 +167,10 @@
 }
 .drawing-scale {
   width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transform-origin: center;
   max-width: 1100px;
 }
@@ -173,6 +178,12 @@
   width: 100%;
   height: auto;
   display: block;
+}
+.drawing-area .lettering {
+  height: 100%;
+}
+.panel-scroll {
+  contain: layout style;
 }
 .drawing-area[data-mode="symbol"] .drawing-scale {
   width: min(72%, 470px);
@@ -245,6 +256,9 @@
 .variations {
   width: min(100%, 990px);
   flex-shrink: 0;
+  position: absolute;
+  bottom: 70px;
+  z-index: 8;
 }
 .variation-heading {
   display: flex;
@@ -426,6 +440,18 @@
 }
 .family > svg {
   height: 37px;
+}
+.family-preview {
+  display: block;
+  width: 100%;
+  height: 37px;
+  background: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
 }
 .family > span {
   display: block;
@@ -1477,4 +1503,186 @@
 }
 .gradient-editor [data-slot="gradient-bar"] {
   margin-block: 5px;
+}
+
+/* The artwork keeps the focus; utilities stay around the canvas. */
+.canvas-area {
+  overflow: hidden;
+}
+.symbol-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9;
+}
+.symbol-back button {
+  gap: 7px;
+  color: var(--muted-foreground);
+}
+.toolbar-view [data-slot="toggle-group"] {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 2px;
+}
+.toolbar-view [data-slot="toggle-group-item"] {
+  min-width: 33px;
+  height: 28px;
+  padding-inline: 8px;
+  font-size: 11px;
+}
+.toolbar-view [data-slot="segmented-indicator"] {
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / 2);
+  border-radius: 7px;
+}
+.canvas-toolbar {
+  gap: 0;
+}
+.zoom-trigger {
+  min-width: 47px;
+  padding-inline: 4px;
+}
+.variation-heading {
+  justify-content: center;
+  gap: 9px;
+  min-height: 34px;
+  padding-bottom: 6px;
+}
+.variation-heading > button {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 180ms,
+    transform 180ms;
+}
+.workspace:hover .variation-heading > button,
+.variation-heading:focus-within > button,
+.variations.expanded .variation-heading > button {
+  opacity: 1;
+  transform: translateY(0);
+}
+.preset-popover {
+  width: 300px;
+  background: color-mix(in srgb, var(--popover) 96%, transparent);
+}
+.preset-heading,
+.preset-save,
+.preset-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.preset-heading {
+  justify-content: space-between;
+}
+.preset-heading > span {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.preset-save input {
+  min-width: 0;
+  font-size: 12px;
+}
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.preset-row {
+  border-radius: 10px;
+  padding-right: 6px;
+  background: var(--secondary);
+}
+.preset-load {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 10px;
+  padding: 9px;
+  background: transparent;
+  border: 0;
+  color: var(--foreground);
+}
+.preset-load > img {
+  width: 64px;
+  height: 38px;
+  object-fit: contain;
+}
+.preset-load > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.color-section {
+  border-bottom: 0;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+.fill-field {
+  width: 100%;
+  justify-content: flex-start;
+  border-radius: 9px;
+  height: 39px;
+  gap: 10px;
+  margin-bottom: 13px;
+  font-size: 12px;
+}
+.fill-field > svg {
+  margin-left: auto;
+  color: var(--muted-foreground);
+}
+.fill-chip {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
+}
+.fill-popover {
+  width: min(304px, calc(100vw - 32px));
+  max-height: min(700px, var(--available-height, 90dvh));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  background: color-mix(in srgb, var(--popover) 96%, transparent);
+  backdrop-filter: blur(24px);
+}
+.fill-picker-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.fill-picker-heading button {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.add-swatch {
+  width: 100%;
+  margin-top: 14px;
+}
+@media (hover: none) {
+  .variation-heading > button {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 600px) {
+  .canvas-toolbar {
+    padding: 4px;
+    max-width: 100%;
+  }
+  .canvas-toolbar > [data-slot="button"] {
+    width: 27px;
+    height: 28px;
+  }
+  .canvas-toolbar .toolbar-separator {
+    margin-inline: 2px;
+  }
+  .canvas-toolbar .zoom-trigger {
+    min-width: 40px;
+  }
 }

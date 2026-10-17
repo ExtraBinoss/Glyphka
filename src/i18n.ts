@@ -1,6 +1,16 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 const fr = {
+  presets: "Presets",
+  presetName: "Nom du preset",
+  savePreset: "Enregistrer le preset",
+  loadPreset: "Charger",
+  deletePreset: "Supprimer",
+  back: "Retour",
+  backToWordmark: "Retour au lettrage",
+  zoomIn: "Zoom avant",
+  zoomOut: "Zoom arrière",
+  openColorPicker: "Ouvrir le sélecteur de couleur",
   preferences: "Préférences",
   credits: "Crédits & licences",
   flux: "Flux",
@@ -191,6 +201,16 @@ const fr = {
   selection: "Sélection",
 };
 const en: typeof fr = {
+  presets: "Presets",
+  presetName: "Preset name",
+  savePreset: "Save preset",
+  loadPreset: "Load",
+  deletePreset: "Delete",
+  back: "Back",
+  backToWordmark: "Back to lettering",
+  zoomIn: "Zoom in",
+  zoomOut: "Zoom out",
+  openColorPicker: "Open color picker",
   preferences: "Preferences",
   credits: "Credits & licenses",
   flux: "Flux",
@@ -387,12 +407,17 @@ try {
 } catch {
   /* System language remains the fallback. */
 }
-void i18n.use(initReactI18next).init({
-  resources: { fr: { translation: fr }, en: { translation: en } },
-  lng: language,
-  fallbackLng: "en",
-  interpolation: { escapeValue: false },
-});
+void i18n
+  .use(initReactI18next)
+  .init({
+    resources: { fr: { translation: fr }, en: { translation: en } },
+    lng: language,
+    fallbackLng: "en",
+    interpolation: { escapeValue: false },
+  })
+  .catch((error: unknown) => {
+    console.error("Language initialization failed", error);
+  });
 i18n.on("languageChanged", (lng) => {
   document.documentElement.lang = lng;
   try {

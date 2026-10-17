@@ -1,10 +1,16 @@
-import { CanvasTexture, LinearFilter, SRGBColorSpace } from "three";
+import {
+  CanvasTexture,
+  DataTexture,
+  LinearFilter,
+  SRGBColorSpace,
+} from "three";
 import type { GradientFill } from "@/engine/model";
 import { gradientVector } from "@/engine/paint";
 
 export class PaintTexture {
   private canvas = document.createElement("canvas");
   private texture: CanvasTexture;
+  readonly solid = new DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   private key = "";
   constructor() {
     this.canvas.width = this.canvas.height = 512;
@@ -12,9 +18,13 @@ export class PaintTexture {
     this.texture.colorSpace = SRGBColorSpace;
     this.texture.minFilter = this.texture.magFilter = LinearFilter;
     this.texture.generateMipmaps = false;
+    this.solid.colorSpace = SRGBColorSpace;
+    this.solid.minFilter = this.solid.magFilter = LinearFilter;
+    this.solid.generateMipmaps = false;
+    this.solid.needsUpdate = true;
   }
   update(fill: GradientFill | null | undefined, width: number, height: number) {
-    if (!fill) return null;
+    if (!fill) return this.solid;
     const key = JSON.stringify([fill, width, height]);
     if (key !== this.key) {
       this.key = key;
@@ -48,5 +58,6 @@ export class PaintTexture {
   }
   dispose() {
     this.texture.dispose();
+    this.solid.dispose();
   }
 }

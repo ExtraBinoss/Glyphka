@@ -1,5 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+
+async function openGradient(page: Page) {
+  await page
+    .getByRole("button", { name: "Couleur personnalisée", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Remplissage", exact: true }).click();
+  await page
+    .getByRole("menuitemradio", { name: "Dégradé", exact: true })
+    .click();
+  await expect(page.locator('[data-slot="gradient-bar"]')).toBeVisible();
+}
 
 test("keeps the canvas quiet, reveals variations and opens a clicked letter as a symbol", async ({
   page,
@@ -34,10 +45,7 @@ test("edits and persists gradient stops, and exports a genuinely colored transpa
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Dégradé", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Modifier le dégradé", exact: true })
-    .click();
+  await openGradient(page);
   const bar = page.locator('[data-slot="gradient-bar"]');
   await page
     .getByRole("button", { name: "Ajouter un stop", exact: true })
@@ -102,7 +110,7 @@ test("applies live solid and gradient paint to 3D without extruding again", asyn
 }) => {
   test.setTimeout(60000);
   await page.goto("/");
-  await page.getByRole("button", { name: "Rendu 3D", exact: true }).click();
+  await page.getByRole("button", { name: "3D", exact: true }).click();
   const scene = page.getByTestId("three-scene");
   await expect(scene).toHaveAttribute("data-ready", "true", { timeout: 30000 });
   const revision = await scene.getAttribute("data-revision");
@@ -126,11 +134,8 @@ test("applies live solid and gradient paint to 3D without extruding again", asyn
   await expect(scene).toHaveAttribute("data-revision", revision!);
   await page.mouse.up();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Dégradé", exact: true }).click();
+  await openGradient(page);
   await expect(scene).toHaveAttribute("data-paint", /stops/);
-  await page
-    .getByRole("button", { name: "Modifier le dégradé", exact: true })
-    .click();
   await page
     .getByRole("button", { name: "Ajouter un stop", exact: true })
     .click();

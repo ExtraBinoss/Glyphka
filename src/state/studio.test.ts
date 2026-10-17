@@ -17,9 +17,11 @@ import {
 it("groups live slider edits into one reversible gesture", () => {
   const store = createStore(),
     initial = store.get(designAtom);
+  const paint = store.get(paintAtom);
   store.set(beginGestureAtom);
   for (let weight = 10; weight <= 34; weight++) store.set(editAtom, { weight });
   expect(store.get(designAtom).weight).toBe(34);
+  expect(store.get(paintAtom)).toBe(paint);
   store.set(endGestureAtom);
   expect(store.get(canUndoAtom)).toBe(true);
   store.set(undoAtom);

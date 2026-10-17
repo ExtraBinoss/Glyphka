@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 import { AnimatePresence, m } from "motion/react";
 import { cn } from "cn";
+const displayValue = (value: number) => value;
 
 function Slider({
   className,
@@ -10,7 +11,7 @@ function Slider({
   min = 0,
   max = 100,
   showTooltip = false,
-  tooltipContent = (value) => value,
+  tooltipContent = displayValue,
   "aria-label": label,
   ...props
 }: SliderPrimitive.Root.Props & {

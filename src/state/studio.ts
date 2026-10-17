@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import {
   DEFAULT_DESIGN,
   validateDesign,
@@ -27,13 +28,27 @@ interface History {
 }
 const historyAtom = atom<History>({ past: [], present: load(), future: [] });
 export const designAtom = atom((get) => get(historyAtom).present);
+export const textAtom = atom((get) => get(designAtom).text);
+export const previewDesignAtom = atom<Design | null>(null);
+export const renderDesignAtom = atom(
+  (get) => get(previewDesignAtom) ?? get(designAtom),
+);
+export const gestureActiveAtom = atom(false);
+export const instantDrawingAtom = atom(
+  (get) => get(gestureActiveAtom) || get(previewDesignAtom) !== null,
+);
 export interface Paint {
   color: string;
   gradient?: GradientFill | null;
 }
 const previewPaintAtom = atom<Paint | null>(null);
+const documentPaintAtom = selectAtom(
+  renderDesignAtom,
+  (design): Paint => ({ color: design.color, gradient: design.gradient }),
+  (a, b) => a.color === b.color && a.gradient === b.gradient,
+);
 export const paintAtom = atom(
-  (get): Paint => get(previewPaintAtom) ?? get(designAtom),
+  (get): Paint => get(previewPaintAtom) ?? get(documentPaintAtom),
 );
 export const previewColorAtom = atom(null, (_get, set, paint: Paint) => {
   set(previewPaintAtom, paint);
@@ -44,12 +59,34 @@ export const commitPaintAtom = atom(null, (get, set) => {
   set(editAtom, { color: paint.color, gradient: paint.gradient ?? null });
   set(previewPaintAtom, null);
 });
-export const modeAtom = atom<Mode>("wordmark");
+const editorModeAtom = atom<Mode>("wordmark");
+const modeZoomsAtom = atom<Partial<Record<Mode, number>>>({});
+export const modeAtom = atom(
+  (get) => get(editorModeAtom),
+  (get, set, mode: Mode) => {
+    const previous = get(editorModeAtom);
+    if (mode === previous) return;
+    const zooms = get(modeZoomsAtom);
+    if (previous !== "about")
+      set(modeZoomsAtom, { ...zooms, [previous]: get(zoomAtom) });
+    if (mode !== "about") set(zoomAtom, zooms[mode] ?? 100);
+    set(previewDesignAtom, null);
+    set(editorModeAtom, mode);
+  },
+);
 export const selectedGlyphAtom = atom(0);
 export const selectedShapeAtom = atom<string | null>(null);
 export const guidesAtom = atom(false);
 export const zoomAtom = atom(100);
-export const viewAtom = atom<"2d" | "3d">("2d");
+const rendererViewAtom = atom<"2d" | "3d">("2d");
+export const threeMountedAtom = atom(false);
+export const viewAtom = atom(
+  (get) => get(rendererViewAtom),
+  (_get, set, view: "2d" | "3d") => {
+    if (view === "3d") set(threeMountedAtom, true);
+    set(rendererViewAtom, view);
+  },
+);
 export interface ThreeApi {
   png: () => Promise<Blob>;
   reset: () => void;
@@ -69,12 +106,14 @@ const save = (design: Design) => {
 };
 // A gesture is a single history entry, even when it produces hundreds of live frames.
 let gestureStart: Design | null = null;
-export const beginGestureAtom = atom(null, (get) => {
+export const beginGestureAtom = atom(null, (get, set) => {
+  set(gestureActiveAtom, true);
   if (!gestureStart) gestureStart = get(designAtom);
 });
 export const editAtom = atom(
   null,
   (get, set, patch: Partial<Design> | ((design: Design) => Design)) => {
+    set(previewDesignAtom, null);
     const h = get(historyAtom),
       next =
         typeof patch === "function"
@@ -103,6 +142,7 @@ if (typeof window !== "undefined")
   });
 let lastDesign: Design | null = null;
 export const endGestureAtom = atom(null, (get, set) => {
+  set(gestureActiveAtom, false);
   if (!gestureStart) return;
   const h = get(historyAtom);
   if (JSON.stringify(gestureStart) !== JSON.stringify(h.present))
@@ -111,6 +151,8 @@ export const endGestureAtom = atom(null, (get, set) => {
   lastDesign = get(designAtom);
 });
 export const undoAtom = atom(null, (get, set) => {
+  set(previewDesignAtom, null);
+  set(gestureActiveAtom, false);
   set(previewPaintAtom, null);
   gestureStart = null;
   const h = get(historyAtom),
@@ -124,6 +166,8 @@ export const undoAtom = atom(null, (get, set) => {
   scheduleSave(previous);
 });
 export const redoAtom = atom(null, (get, set) => {
+  set(previewDesignAtom, null);
+  set(gestureActiveAtom, false);
   set(previewPaintAtom, null);
   gestureStart = null;
   const h = get(historyAtom),

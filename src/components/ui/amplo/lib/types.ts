@@ -29,7 +29,12 @@ export interface ContrastResult {
   /** WCAG 2.1 contrast ratio, 1..21 */
   wcag: number;
   /** WCAG 2.1 levels passed against the supplied background */
-  wcagLevel: { aaNormal: boolean; aaLarge: boolean; aaaNormal: boolean; aaaLarge: boolean };
+  wcagLevel: {
+    aaNormal: boolean;
+    aaLarge: boolean;
+    aaaNormal: boolean;
+    aaaLarge: boolean;
+  };
   /** APCA Lc value, signed, typical magnitude 0..108 */
   apca: number;
 }

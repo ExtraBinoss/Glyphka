@@ -17,3 +17,6 @@ shadcn/ui — MIT (shadcn-LICENSE.txt)
 Amplo gradient picker — MIT (amplo.txt)
 Source: https://github.com/TheAleSch/amplo-picker
 Culori color conversions — MIT (Culori-LICENSE.txt)
+d3-interpolate-path — BSD-3-Clause (d3-interpolate-path-LICENSE.txt)
+svgpath — MIT (svgpath-LICENSE.txt)
+The baked studio lighting is generated from Three.js RoomEnvironment.

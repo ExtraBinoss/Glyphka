@@ -2,7 +2,7 @@ import { useId, useRef, type PointerEvent } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   beginGestureAtom,
-  designAtom,
+  renderDesignAtom,
   editAtom,
   endGestureAtom,
   guidesAtom,
@@ -18,10 +18,11 @@ type Drag = {
   action: "move" | "resize" | "rotate";
   corner?: [number, number];
 };
+import { MorphPath } from "./MorphSvg";
 import { SvgPaint } from "./SvgPaint";
 
 export function ShapeCanvas({ ink }: { ink: string }) {
-  const design = useAtomValue(designAtom),
+  const design = useAtomValue(renderDesignAtom),
     guides = useAtomValue(guidesAtom),
     [selected, setSelected] = useAtom(selectedShapeAtom);
   const edit = useSetAtom(editAtom),
@@ -123,7 +124,7 @@ export function ShapeCanvas({ ink }: { ink: string }) {
           {design.shapes
             .filter((s) => s.cutout)
             .map((s) => (
-              <path
+              <MorphPath
                 key={s.id}
                 d={shapePath(s, design.weight)}
                 transform={`translate(${s.x} ${s.y}) rotate(${s.rotation})`}
@@ -149,7 +150,7 @@ export function ShapeCanvas({ ink }: { ink: string }) {
           {design.shapes
             .filter((s) => !s.cutout)
             .map((s) => (
-              <path
+              <MorphPath
                 key={s.id}
                 d={shapePath(s, design.weight)}
                 transform={`translate(${s.x} ${s.y}) rotate(${s.rotation})`}

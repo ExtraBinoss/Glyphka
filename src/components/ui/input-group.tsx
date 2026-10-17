@@ -44,6 +44,8 @@ function InputGroupAddon({
   align = "inline-start",
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
+  // This decorative click area focuses its adjacent, keyboard-accessible input.
+  /* oxlint-disable jsx-a11y/click-events-have-key-events */
   return (
     <div
       role="group"
@@ -60,6 +62,8 @@ function InputGroupAddon({
     />
   );
 }
+
+/* oxlint-enable jsx-a11y/click-events-have-key-events */
 
 const inputGroupButtonVariants = cva(
   "flex items-center gap-2 rounded-4xl text-sm shadow-none",

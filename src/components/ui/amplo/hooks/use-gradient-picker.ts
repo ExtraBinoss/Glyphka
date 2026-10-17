@@ -224,9 +224,7 @@ export function useGradientPicker(
 
   // Whether the caller opted into id tracking. State drives render output;
   // the mirrored ref lets `apply` handle chained mutations synchronously.
-  const initialIdTracking = hasStopIds(
-    value ?? defaultValue ?? DEFAULT_LINEAR,
-  );
+  const initialIdTracking = hasStopIds(value ?? defaultValue ?? DEFAULT_LINEAR);
   const [idTracked, setIdTracked] = React.useState(initialIdTracking);
   const idTrackedRef = React.useRef(initialIdTracking);
   const [selectedStopId, setSelectedStopId] = React.useState<string>(
@@ -305,9 +303,7 @@ export function useGradientPicker(
       // `stop identity with duplicate positions` tests. Consumers who need
       // exactness opt into `GradientStop.id` and take the identity path
       // below.
-      const incoming = [...value.stops].sort(
-        (a, b) => a.position - b.position,
-      );
+      const incoming = [...value.stops].sort((a, b) => a.position - b.position);
       // Identity path: when every incoming stop carries an id and that set is
       // exactly what we hold, pair on the id. This is the only way to follow
       // stops through a reorder that position+index cannot describe — two
@@ -322,7 +318,8 @@ export function useGradientPicker(
       // Duplicated ids can't identify anything — treat them as un-tagged
       // rather than aliasing two stops onto one id.
       const uniqueIds =
-        allHaveIds && new Set(incoming.map((s) => s.id)).size === incoming.length;
+        allHaveIds &&
+        new Set(incoming.map((s) => s.id)).size === incoming.length;
       const byId =
         uniqueIds && sameLength && incoming.every((s) => prevIds.has(s.id!));
       const sameShape = uniqueIds
@@ -427,10 +424,11 @@ export function useGradientPicker(
           ? {
               ...cur,
               start: { x: clamp01(xy.x), y: clamp01(xy.y) },
-              angle: angleFromPoints(
-                { x: clamp01(xy.x), y: clamp01(xy.y) },
-                cur.end,
-              ) ?? cur.angle,
+              angle:
+                angleFromPoints(
+                  { x: clamp01(xy.x), y: clamp01(xy.y) },
+                  cur.end,
+                ) ?? cur.angle,
             }
           : (() => {
               const { start: _drop, ...rest } = cur;
@@ -450,10 +448,11 @@ export function useGradientPicker(
           ? {
               ...cur,
               end: { x: clamp01(xy.x), y: clamp01(xy.y) },
-              angle: angleFromPoints(
-                cur.start,
-                { x: clamp01(xy.x), y: clamp01(xy.y) },
-              ) ?? cur.angle,
+              angle:
+                angleFromPoints(cur.start, {
+                  x: clamp01(xy.x),
+                  y: clamp01(xy.y),
+                }) ?? cur.angle,
             }
           : (() => {
               const { end: _drop, ...rest } = cur;
@@ -469,7 +468,10 @@ export function useGradientPicker(
       apply((prev) => {
         if (prev.gradient.type !== "conic") return prev;
         return {
-          gradient: { ...(prev.gradient as ConicGradient), startAngle: angleDeg },
+          gradient: {
+            ...(prev.gradient as ConicGradient),
+            startAngle: angleDeg,
+          },
           stops: prev.stops,
         };
       }),
@@ -607,8 +609,9 @@ export function useGradientPicker(
     [apply],
   );
 
-  const [containerWidth, setContainerWidth] =
-    React.useState<number | null>(null);
+  const [containerWidth, setContainerWidth] = React.useState<number | null>(
+    null,
+  );
 
   const setRadiusPx = React.useCallback(
     (px: number | undefined) =>

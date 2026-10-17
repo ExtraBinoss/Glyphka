@@ -66,6 +66,7 @@ export function RangeField({
               end();
             }}
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) return;
               if (e.key === "Enter") e.currentTarget.blur();
               if (e.key === "Escape") {
                 setDraft(null);

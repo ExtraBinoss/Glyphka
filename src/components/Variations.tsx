@@ -1,57 +1,66 @@
-import { useState } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useMemo, useState } from "react";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, m } from "motion/react";
 import { ChevronDown, RefreshCw } from "lucide-react";
 import {
   designAtom,
+  textAtom,
   editAtom,
   modeAtom,
   selectedGlyphAtom,
+  previewDesignAtom,
+  viewAtom,
 } from "@/state/studio";
-import { FAMILIES, PRESETS, type Design } from "@/engine/model";
-import { random } from "@/engine/geometry";
+import type { Design } from "@/engine/model";
+import { generateVariations } from "@/engine/variations";
+import { buildMesh } from "@/engine/mesh-service";
 import { Lettering } from "./Drawing";
 import { Button } from "./ui/button";
 
-export function generateVariations(design: Design, seed: number): Design[] {
-  const rng = random(seed),
-    families = [...FAMILIES];
-  for (let i = families.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [families[i], families[j]] = [families[j], families[i]];
-  }
-  return families.slice(0, 4).map((family, index) => ({
-    ...design,
-    ...PRESETS[family],
-    seed: seed + index * 43,
-    weight: Math.round(16 + rng() * 14),
-    slant: Math.round(-18 + rng() * 24),
-    width: Math.round(78 + rng() * 45),
-    tracking: Math.round(4 + rng() * 22),
-    cutouts: Math.round(rng() * 85),
-    mutation: Math.round(rng() * 65),
-    alternates: Object.fromEntries(
-      [...design.text].map((_, i) => [i, Math.floor(rng() * 200000)]),
-    ),
-  }));
-}
 export function Variations() {
   const { t } = useTranslation(),
-    design = useAtomValue(designAtom),
+    text = useAtomValue(textAtom),
     edit = useSetAtom(editAtom),
     mode = useAtomValue(modeAtom),
-    selected = useAtomValue(selectedGlyphAtom);
-  const [seed, setSeed] = useState(3701),
+    selected = useAtomValue(selectedGlyphAtom),
+    view = useAtomValue(viewAtom),
+    preview = useSetAtom(previewDesignAtom);
+  const [candidates, setVariations] = useState<Design[]>([]),
     [expanded, setExpanded] = useState(false);
-  const variations = generateVariations(design, seed);
+  const variations = useMemo(
+    () => candidates.map((v) => ({ ...v, text })),
+    [candidates, text],
+  );
+  const refresh = () =>
+    setVariations(
+      generateVariations(
+        getDefaultStore().get(designAtom),
+        Math.floor(Math.random() * 999999),
+      ),
+    );
+  useEffect(() => () => preview(null), [preview]);
+  useEffect(() => {
+    if (expanded && view === "3d" && mode !== "about")
+      for (const v of variations)
+        void buildMesh(v, mode, selected, false).catch(() => {
+          /* Optional preview prewarm. */
+        });
+  }, [expanded, view, mode, variations, selected]);
   return (
     <section
-      className={`variations ${expanded ? "" : "collapsed"}`}
+      className={`variations ${expanded ? "expanded" : "collapsed"}`}
       aria-label={t("variants")}
     >
       <div className="variation-heading">
-        <button onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
+        <button
+          onClick={() => {
+            preview(null);
+            if (!expanded) refresh();
+            setExpanded(!expanded);
+          }}
+          aria-expanded={expanded}
+        >
           {t("exploreTitle")}
           <m.span
             animate={{ rotate: expanded ? 180 : 0 }}
@@ -60,27 +69,28 @@ export function Variations() {
             <ChevronDown size={14} />
           </m.span>
         </button>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label={t("newVariants")}
-          title={t("newVariants")}
-          onClick={() => {
-            setSeed(Math.floor(Math.random() * 999999));
-            setExpanded(true);
-          }}
-        >
-          <RefreshCw />
-        </Button>
+        {expanded && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={t("newVariants")}
+            onClick={() => {
+              preview(null);
+              refresh();
+            }}
+          >
+            <RefreshCw />
+          </Button>
+        )}
       </div>
       <AnimatePresence initial={false}>
         {expanded && (
           <m.div
             className="variation-reveal"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.32, ease: [0.22, 0.7, 0.2, 1] }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.3 }}
           >
             <m.div
               className="variation-grid"
@@ -94,21 +104,29 @@ export function Variations() {
             >
               {variations.map((v, i) => (
                 <m.button
-                  variants={{
-                    closed: { opacity: 0, y: 12, scale: 0.97 },
-                    open: { opacity: 1, y: 0, scale: 1 },
-                  }}
-                  transition={{ duration: 0.25 }}
-                  key={i}
+                  key={`${v.family}-${v.seed}`}
                   className="variation-card"
                   aria-label={`${t("apply")} ${t(v.family)} ${i + 1}`}
-                  onClick={() => edit(v)}
+                  variants={{
+                    closed: { opacity: 0, y: 12 },
+                    open: { opacity: 1, y: 0 },
+                  }}
+                  transition={{ duration: 0.22 }}
+                  onPointerEnter={() => preview(v)}
+                  onPointerLeave={() => preview(null)}
+                  onFocus={() => preview(v)}
+                  onBlur={() => preview(null)}
+                  onClick={() => {
+                    edit(v);
+                    preview(null);
+                  }}
                 >
                   <span className="variation-number">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <Lettering
                     design={v}
+                    paint={v}
                     singleIndex={
                       mode === "symbol"
                         ? Math.min(selected, Math.max(0, v.text.length - 1))

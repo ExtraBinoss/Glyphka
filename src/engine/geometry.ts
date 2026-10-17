@@ -321,7 +321,7 @@ export function buildDrawing(design: Design, singleIndex?: number): Drawing {
   const squish = design.width / 100;
   const chars =
     singleIndex === undefined
-      ? [...text].map((char, index) => ({ char, index }))
+      ? Array.from(text).map((char, index) => ({ char, index }))
       : [{ char: text[singleIndex] ?? "P", index: singleIndex }];
   const shear = Math.tan((design.slant * Math.PI) / 180);
   const extra = Math.abs(shear) * 105;
@@ -343,7 +343,39 @@ export function buildDrawing(design: Design, singleIndex?: number): Drawing {
     glyphs,
   };
 }
+const shapePaths = new Map<string, string>();
+let shapeCacheBytes = 0;
 export function shapePath(shape: Shape, weight = 23): string {
+  const key = JSON.stringify([
+    shape.kind,
+    shape.width,
+    shape.height,
+    shape.points,
+    shape.inner,
+    shape.tension,
+    shape.twist,
+    shape.irregularity,
+    shape.seed,
+    shape.thickness,
+    weight,
+  ]);
+  const cached = shapePaths.get(key);
+  if (cached !== undefined) {
+    shapePaths.delete(key);
+    shapePaths.set(key, cached);
+    return cached;
+  }
+  const path = buildShapePath(shape, weight);
+  shapePaths.set(key, path);
+  shapeCacheBytes += (key.length + path.length) * 2;
+  while (shapePaths.size > 256 || shapeCacheBytes > 2 * 1024 * 1024) {
+    const oldest = shapePaths.keys().next().value!;
+    shapeCacheBytes -= (oldest.length + shapePaths.get(oldest)!.length) * 2;
+    shapePaths.delete(oldest);
+  }
+  return path;
+}
+function buildShapePath(shape: Shape, weight: number): string {
   const procedural = proceduralPath(shape);
   if (procedural) return procedural;
   const w = shape.width,

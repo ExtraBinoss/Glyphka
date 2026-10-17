@@ -51,7 +51,7 @@ export function useGradientPickerContext(): GradientPickerState {
   if (!ctx) {
     throw new Error(
       "GradientPicker.* parts must be rendered inside <GradientPicker.Root> " +
-        "or <FillPicker.Pane mode=\"gradient\">",
+        'or <FillPicker.Pane mode="gradient">',
     );
   }
   return ctx;

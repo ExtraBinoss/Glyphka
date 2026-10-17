@@ -25,16 +25,20 @@ export function ScrollShadow({
       if (!frame) frame = requestAnimationFrame(update);
     };
     const resize = new ResizeObserver(schedule);
-    const observeContent = () => {
-      resize.disconnect();
-      resize.observe(element);
-      for (const child of element.children) resize.observe(child);
+    resize.observe(element);
+    for (const child of element.children) resize.observe(child);
+    const mutations = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.removedNodes)
+          if (node instanceof Element) resize.unobserve(node);
+        for (const node of record.addedNodes)
+          if (node instanceof Element) resize.observe(node);
+      }
       schedule();
-    };
-    const mutations = new MutationObserver(observeContent);
+    });
     mutations.observe(element, { childList: true });
     update();
-    observeContent();
+    schedule();
     element.addEventListener("scroll", schedule, { passive: true });
 
     return () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { AnimatePresence, m } from "motion/react";
 import { useTranslation } from "react-i18next";
 import {
@@ -11,7 +11,8 @@ import {
   Crosshair,
   Focus,
   Grid2X2,
-  Maximize2,
+  Minus,
+  Plus,
   Redo2,
   Shapes,
   SlidersHorizontal,
@@ -22,11 +23,12 @@ import {
 } from "lucide-react";
 import { About } from "@/components/About";
 import { serializeSvg } from "@/engine/geometry";
-import { generateComposition } from "@/engine/generate";
+import { randomizeDesign } from "@/engine/randomize";
 import {
   canRedoAtom,
   canUndoAtom,
   designAtom,
+  textAtom,
   editAtom,
   endGestureAtom,
   commitPaintAtom,
@@ -52,7 +54,9 @@ import { CanvasView } from "@/components/CanvasView";
 import { ControlHint } from "@/components/ControlHint";
 import { AddShape, Properties } from "@/components/Properties";
 import { Variations } from "@/components/Variations";
-import { generateVariations } from "@/components/Variations";
+import { PresetControls } from "@/components/PresetControls";
+import { PreferenceGroup } from "@/components/PreferenceGroup";
+import { preloadThree } from "@/lib/preload-three";
 
 import { RangeField } from "@/components/RangeField";
 import { download, exportPng } from "@/lib/export";
@@ -73,7 +77,8 @@ function Navigation() {
         if (!event.currentTarget.contains(event.relatedTarget))
           setExpanded(false);
       }}
-      animate={{ width: expanded ? 158 : 58 }}
+      layout="size"
+      style={{ width: expanded ? 158 : 58 }}
       transition={{ type: "spring", stiffness: 380, damping: 32 }}
     >
       {(
@@ -84,7 +89,8 @@ function Navigation() {
           ["about", CircleHelp],
         ] as const
       ).map(([id, Icon]) => (
-        <button
+        <m.button
+          layout="position"
           key={id}
           aria-label={t(id)}
           aria-current={mode === id ? "page" : undefined}
@@ -105,20 +111,21 @@ function Navigation() {
           >
             {t(id)}
           </m.span>
-        </button>
+        </m.button>
       ))}
     </m.nav>
   );
 }
 function ExportControls({ notify }: { notify: (message: string) => void }) {
   const { t } = useTranslation(),
-    design = useAtomValue(designAtom),
+    text = useAtomValue(textAtom),
     mode = useAtomValue(modeAtom),
     selected = useAtomValue(selectedGlyphAtom),
     view = useAtomValue(viewAtom),
     api = useAtomValue(threeApiAtom),
     [busy, setBusy] = useState(false);
   const source = () => {
+    const design = getDefaultStore().get(designAtom);
     const ink =
       design.color === "auto"
         ? getComputedStyle(document.documentElement)
@@ -132,7 +139,7 @@ function ExportControls({ notify }: { notify: (message: string) => void }) {
       Math.min(selected, Math.max(0, design.text.length - 1)),
     );
   };
-  const filename = `${design.text.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "glyph"}-${mode}`;
+  const filename = `${text.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "glyph"}-${mode}`;
   const svg = () =>
     download(
       new Blob([source()], { type: "image/svg+xml" }),
@@ -147,9 +154,8 @@ function ExportControls({ notify }: { notify: (message: string) => void }) {
       );
     } catch {
       notify(t("exportError"));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
   const copy = async () => {
     try {
@@ -218,10 +224,33 @@ function Toolbar() {
     [guides, setGuides] = useAtom(guidesAtom),
     [zoom, setZoom] = useAtom(zoomAtom),
     mode = useAtomValue(modeAtom),
-    view = useAtomValue(viewAtom),
-    api = useAtomValue(threeApiAtom);
+    [view, setView] = useAtom(viewAtom);
   return (
     <div className="canvas-toolbar glass">
+      <div
+        className="toolbar-view"
+        onPointerOver={(event) => {
+          if (
+            event.target instanceof Element &&
+            event.target.closest('button[aria-label="3D"]')
+          )
+            preloadThree();
+        }}
+        onFocus={(event) => {
+          if (event.target.getAttribute("aria-label") === "3D") preloadThree();
+        }}
+      >
+        <PreferenceGroup
+          label={t("view")}
+          value={view}
+          options={[
+            { value: "2d", label: "2D" },
+            { value: "3d", label: "3D" },
+          ]}
+          onChange={(value) => setView(value as "2d" | "3d")}
+        />
+      </div>
+      <span className="toolbar-separator" />
       <Button
         variant="ghost"
         size="icon-sm"
@@ -253,6 +282,15 @@ function Toolbar() {
       >
         <Grid2X2 />
       </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={t("zoomOut")}
+        disabled={zoom <= 25}
+        onClick={() => setZoom(Math.max(25, zoom - 10))}
+      >
+        <Minus />
+      </Button>
       <Popover>
         <PopoverTrigger
           render={<Button variant="ghost" size="sm" />}
@@ -269,13 +307,11 @@ function Toolbar() {
           <RangeField
             label={t("zoom")}
             value={zoom}
-            min={50}
-            max={160}
+            min={25}
+            max={400}
             unit="%"
-            initial={100}
             onChange={(value) => {
               setZoom(value);
-              if (view === "3d") api?.zoom(value);
             }}
           />
         </PopoverContent>
@@ -283,19 +319,16 @@ function Toolbar() {
       <Button
         variant="ghost"
         size="icon-sm"
-        aria-label={t("fit")}
-        title={t("fit")}
-        onClick={() => {
-          setZoom(100);
-          if (view === "3d") api?.reset();
-        }}
+        aria-label={t("zoomIn")}
+        disabled={zoom >= 400}
+        onClick={() => setZoom(Math.min(400, zoom + 10))}
       >
-        <Maximize2 />
+        <Plus />
       </Button>
       {mode === "shapes" && (
         <>
           <span className="toolbar-separator" />
-          <AddShape />
+          <AddShape compact />
         </>
       )}
     </div>
@@ -305,7 +338,6 @@ export function App() {
   useThemeSync();
   const { t } = useTranslation(),
     [mode] = useAtom(modeAtom),
-    design = useAtomValue(designAtom),
     edit = useSetAtom(editAtom),
     selectedShape = useAtomValue(selectedShapeAtom),
     undo = useSetAtom(undoAtom),
@@ -348,7 +380,10 @@ export function App() {
       if (mode === "shapes" && selectedShape) {
         if (event.key === "Delete" || event.key === "Backspace") {
           event.preventDefault();
-          edit({ shapes: design.shapes.filter((s) => s.id !== selectedShape) });
+          edit((design) => ({
+            ...design,
+            shapes: design.shapes.filter((s) => s.id !== selectedShape),
+          }));
         }
         const direction = (
           {
@@ -361,7 +396,8 @@ export function App() {
         if (direction) {
           event.preventDefault();
           const step = event.shiftKey ? 10 : 1;
-          edit({
+          edit((design) => ({
+            ...design,
             shapes: design.shapes.map((s) =>
               s.id === selectedShape
                 ? {
@@ -371,7 +407,7 @@ export function App() {
                   }
                 : s,
             ),
-          });
+          }));
         }
       }
       if (event.key === "Escape") setPanelOpen(false);
@@ -386,21 +422,16 @@ export function App() {
       window.removeEventListener("pointercancel", finish);
       window.removeEventListener("blur", finish);
     };
-  }, [mode, selectedShape, design.shapes, edit, undo, redo, end, commitPaint]);
+  }, [mode, selectedShape, edit, undo, redo, end, commitPaint]);
   return (
     <div
       className={`studio mode-${mode} view-${view} ${panelOpen ? "panel-open" : ""}`}
     >
       <Navigation />
       <header className="studio-header">
-        <a
-          className="word-logo"
-          href="#"
-          onClick={(e) => e.preventDefault()}
-          aria-label="Glyphka"
-        >
+        <span className="word-logo" aria-label="Glyphka">
           glyphka<span>.</span>
-        </a>
+        </span>
       </header>
       {mode !== "about" && (
         <div className="top-actions">
@@ -412,17 +443,8 @@ export function App() {
             size="icon-sm"
             onClick={() => {
               setRoll(roll + 1);
-              edit(
-                mode === "shapes"
-                  ? {
-                      shapes: generateComposition(
-                        Math.floor(Math.random() * 999999),
-                      ),
-                    }
-                  : generateVariations(
-                      design,
-                      Math.floor(Math.random() * 999999),
-                    )[0],
+              edit((design) =>
+                randomizeDesign(design, Math.floor(Math.random() * 999999)),
               );
             }}
           >
@@ -433,6 +455,7 @@ export function App() {
               <Dice5 />
             </m.span>
           </Button>
+          <PresetControls />
           <ExportControls notify={setToast} />
           <Button
             variant="outline"

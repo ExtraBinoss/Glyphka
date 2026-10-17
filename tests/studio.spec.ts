@@ -155,8 +155,8 @@ test("uses a real color panel, saves custom swatches and applies color immediate
   await hex.fill("ea5678");
   await hex.press("Enter");
   await expect(
-    page.locator("main .lettering path[stroke]").first(),
-  ).toHaveAttribute("stroke", "#ea5678");
+    page.locator("main .lettering .paint-surface").first(),
+  ).toHaveAttribute("fill", "#ea5678");
   await page
     .getByRole("button", { name: "Ajouter à la palette", exact: true })
     .click();

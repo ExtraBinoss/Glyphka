@@ -116,9 +116,8 @@ export const Bar = React.forwardRef<HTMLDivElement, BarProps>(function Bar(
     // Matched by walking the handles rather than an attribute selector:
     // stop ids can come from the consumer now, so they aren't guaranteed
     // to be selector-safe.
-    const handles = wrapperRef.current?.querySelectorAll<HTMLElement>(
-      '[role="slider"]',
-    );
+    const handles =
+      wrapperRef.current?.querySelectorAll<HTMLElement>('[role="slider"]');
     handles?.forEach((h) => {
       if (h.dataset.stopId === id) h.focus();
     });
@@ -145,79 +144,81 @@ export const Bar = React.forwardRef<HTMLDivElement, BarProps>(function Bar(
     );
   };
 
-  const startStopDrag = (id: string) => (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    // preventDefault keeps the browser from starting a text selection or a
-    // native drag mid-gesture, but it also suppresses the focus a pointerdown
-    // would normally give the handle. Focus it explicitly: without this a
-    // clicked stop looks selected yet keyboard keys (nudge, Delete) go to
-    // <body> and do nothing.
-    e.preventDefault();
-    e.currentTarget.focus();
-    ctx.selectStop(id);
+  const startStopDrag =
+    (id: string) => (e: React.PointerEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+      // preventDefault keeps the browser from starting a text selection or a
+      // native drag mid-gesture, but it also suppresses the focus a pointerdown
+      // would normally give the handle. Focus it explicitly: without this a
+      // clicked stop looks selected yet keyboard keys (nudge, Delete) go to
+      // <body> and do nothing.
+      e.preventDefault();
+      e.currentTarget.focus();
+      ctx.selectStop(id);
 
-    // Listen on document, not the handle DOM node. moveStop reorders the
-    // stops array, and React reconciles the per-stop <div>s in their new
-    // order; if we captured/listened on the original handle element, a
-    // sibling handle could end up under the pointer and steal the gesture.
-    // Document-level listeners + an `id` captured in closure keep the drag
-    // bound to the originally-clicked stop regardless of reordering.
-    let pendingRemove = false;
-    // Track pointer movement so pointerUp can tell a tap from a drag —
-    // 3px slack absorbs the jitter of a deliberate click.
-    const startX = e.clientX;
-    const startY = e.clientY;
-    // Document-level listeners see every pointer; only the one that started
-    // this drag may steer or end it (multi-touch).
-    const dragPointerId = e.pointerId;
-    let moved = false;
-    const onMove = (ev: PointerEvent) => {
-      if (ev.pointerId !== dragPointerId) return;
-      // Self-heal a missed release: without pointer capture, letting go of
-      // the button outside the browser window never delivers pointerup, so
-      // the first re-entry move arrives with no buttons pressed. End the
-      // drag instead of letting the stop chase the cursor.
-      if (ev.buttons === 0) {
+      // Listen on document, not the handle DOM node. moveStop reorders the
+      // stops array, and React reconciles the per-stop <div>s in their new
+      // order; if we captured/listened on the original handle element, a
+      // sibling handle could end up under the pointer and steal the gesture.
+      // Document-level listeners + an `id` captured in closure keep the drag
+      // bound to the originally-clicked stop regardless of reordering.
+      let pendingRemove = false;
+      // Track pointer movement so pointerUp can tell a tap from a drag —
+      // 3px slack absorbs the jitter of a deliberate click.
+      const startX = e.clientX;
+      const startY = e.clientY;
+      // Document-level listeners see every pointer; only the one that started
+      // this drag may steer or end it (multi-touch).
+      const dragPointerId = e.pointerId;
+      let moved = false;
+      const onMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== dragPointerId) return;
+        // Self-heal a missed release: without pointer capture, letting go of
+        // the button outside the browser window never delivers pointerup, so
+        // the first re-entry move arrives with no buttons pressed. End the
+        // drag instead of letting the stop chase the cursor.
+        if (ev.buttons === 0) {
+          cleanup();
+          if (pendingRemove) ctx.removeStop(id);
+          return;
+        }
+        if (!moved) {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+          if (dx * dx + dy * dy > 9) moved = true;
+        }
+        const rect = trackRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const dy = ev.clientY - rect.bottom;
+        // Mark for removal while dragged below the bar by more than 24px,
+        // but only commit on release so the user can drag back up to cancel.
+        pendingRemove = dy > 24 && ctx.stops.length > 1;
+        if (!pendingRemove && moved) {
+          const displayed = displayedPositionFromEvent(ev.clientX);
+          ctx.moveStop(id, fromDisplay(displayed));
+        }
+      };
+      const cleanup = () => {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        document.removeEventListener("pointercancel", onUp);
+        activeDragCleanupRef.current = null;
+      };
+      const onUp = (ev: PointerEvent) => {
+        if (ev.pointerId !== dragPointerId) return;
         cleanup();
         if (pendingRemove) ctx.removeStop(id);
-        return;
-      }
-      if (!moved) {
-        const dx = ev.clientX - startX;
-        const dy = ev.clientY - startY;
-        if (dx * dx + dy * dy > 9) moved = true;
-      }
-      const rect = trackRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const dy = ev.clientY - rect.bottom;
-      // Mark for removal while dragged below the bar by more than 24px,
-      // but only commit on release so the user can drag back up to cancel.
-      pendingRemove = dy > 24 && ctx.stops.length > 1;
-      if (!pendingRemove && moved) {
-        const displayed = displayedPositionFromEvent(ev.clientX);
-        ctx.moveStop(id, fromDisplay(displayed));
-      }
+        else if (!moved && editOnClick) setOpenStopId(id);
+      };
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
+      activeDragCleanupRef.current = cleanup;
     };
-    const cleanup = () => {
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
-      document.removeEventListener("pointercancel", onUp);
-      activeDragCleanupRef.current = null;
-    };
-    const onUp = (ev: PointerEvent) => {
-      if (ev.pointerId !== dragPointerId) return;
-      cleanup();
-      if (pendingRemove) ctx.removeStop(id);
-      else if (!moved && editOnClick) setOpenStopId(id);
-    };
-    document.addEventListener("pointermove", onMove);
-    document.addEventListener("pointerup", onUp);
-    document.addEventListener("pointercancel", onUp);
-    activeDragCleanupRef.current = cleanup;
-  };
 
   const onStopKeyDown =
-    (id: string, position: number) => (e: React.KeyboardEvent<HTMLDivElement>) => {
+    (id: string, position: number) =>
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
       const step = e.shiftKey ? 0.05 : 0.01;
       // Nudge in *displayed* space so a 1% press visibly moves the stop the
       // same distance on screen regardless of whether the gradient is

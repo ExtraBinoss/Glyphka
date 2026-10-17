@@ -9,7 +9,13 @@ import {
   wcagContrast,
   type Color,
 } from "culori";
-import type { ColorFormat, ContrastResult, Gamut, GamutInfo, OklchColor } from "./types";
+import type {
+  ColorFormat,
+  ContrastResult,
+  Gamut,
+  GamutInfo,
+  OklchColor,
+} from "./types";
 
 const toOklch = converter("oklch");
 const toRgb = converter("rgb");
@@ -22,27 +28,50 @@ const GAMUT_EPSILON = 1e-4;
 /** Chroma / lightness-edge threshold below which hue is meaningless. */
 const ACHROMATIC_EPS = 1e-4;
 
-function channelsInRange(c: { r?: number; g?: number; b?: number } | undefined): boolean {
+function channelsInRange(
+  c: { r?: number; g?: number; b?: number } | undefined,
+): boolean {
   if (!c) return false;
   const r = c.r ?? 0;
   const g = c.g ?? 0;
   const b = c.b ?? 0;
   return (
-    r >= -GAMUT_EPSILON && r <= 1 + GAMUT_EPSILON &&
-    g >= -GAMUT_EPSILON && g <= 1 + GAMUT_EPSILON &&
-    b >= -GAMUT_EPSILON && b <= 1 + GAMUT_EPSILON
+    r >= -GAMUT_EPSILON &&
+    r <= 1 + GAMUT_EPSILON &&
+    g >= -GAMUT_EPSILON &&
+    g <= 1 + GAMUT_EPSILON &&
+    b >= -GAMUT_EPSILON &&
+    b <= 1 + GAMUT_EPSILON
   );
 }
 
 const toRec2020 = converter("rec2020");
 
-function isInSrgb(ok: { mode: "oklch"; l: number; c: number; h: number; alpha: number }) {
+function isInSrgb(ok: {
+  mode: "oklch";
+  l: number;
+  c: number;
+  h: number;
+  alpha: number;
+}) {
   return channelsInRange(toRgb(ok));
 }
-function isInP3(ok: { mode: "oklch"; l: number; c: number; h: number; alpha: number }) {
+function isInP3(ok: {
+  mode: "oklch";
+  l: number;
+  c: number;
+  h: number;
+  alpha: number;
+}) {
   return channelsInRange(toP3(ok));
 }
-function isInRec2020(ok: { mode: "oklch"; l: number; c: number; h: number; alpha: number }) {
+function isInRec2020(ok: {
+  mode: "oklch";
+  l: number;
+  c: number;
+  h: number;
+  alpha: number;
+}) {
   return channelsInRange(toRec2020(ok));
 }
 
@@ -247,26 +276,26 @@ export function oklchToLinearSrgb(
 }
 
 /* Linear sRGB → linear Display-P3 (CSS Color 4 reference matrix). */
-export function linSrgbToLinP3(c: {
+export function linSrgbToLinP3(c: { r: number; g: number; b: number }): {
   r: number;
   g: number;
   b: number;
-}): { r: number; g: number; b: number } {
+} {
   return {
-    r: 0.8224621 * c.r + 0.1775380 * c.g + 0.0 * c.b,
-    g: 0.0331942 * c.r + 0.9668058 * c.g + 0.0 * c.b,
+    r: 0.8224621 * c.r + 0.177538 * c.g,
+    g: 0.0331942 * c.r + 0.9668058 * c.g,
     b: 0.0170828 * c.r + 0.0723976 * c.g + 0.9105196 * c.b,
   };
 }
 
 /* Linear sRGB → linear Rec.2020 (CSS Color 4 reference matrix). */
-export function linSrgbToLinRec2020(c: {
+export function linSrgbToLinRec2020(c: { r: number; g: number; b: number }): {
   r: number;
   g: number;
   b: number;
-}): { r: number; g: number; b: number } {
+} {
   return {
-    r: 0.6274039 * c.r + 0.3292830 * c.g + 0.0433131 * c.b,
+    r: 0.6274039 * c.r + 0.329283 * c.g + 0.0433131 * c.b,
     g: 0.0690973 * c.r + 0.9195404 * c.g + 0.0113623 * c.b,
     b: 0.0163914 * c.r + 0.0880133 * c.g + 0.8955953 * c.b,
   };
@@ -293,7 +322,11 @@ export function findMaxChroma(
   l: number,
   hDeg: number,
   gamut: Gamut,
-  options: { iterations?: number; epsilon?: number; marginalChroma?: number } = {},
+  options: {
+    iterations?: number;
+    epsilon?: number;
+    marginalChroma?: number;
+  } = {},
 ): number {
   if (l <= 0 || l >= 1) return 0;
   const iterations = options.iterations ?? 14;
@@ -309,9 +342,12 @@ export function findMaxChroma(
           ? linSrgbToLinP3(lin)
           : linSrgbToLinRec2020(lin);
     return (
-      target.r >= -eps && target.r <= 1 + eps &&
-      target.g >= -eps && target.g <= 1 + eps &&
-      target.b >= -eps && target.b <= 1 + eps
+      target.r >= -eps &&
+      target.r <= 1 + eps &&
+      target.g >= -eps &&
+      target.g <= 1 + eps &&
+      target.b >= -eps &&
+      target.b <= 1 + eps
     );
   };
 
@@ -353,7 +389,9 @@ function isAchromatic(color: OklchColor): boolean {
  * `ACHROMATIC_HUE_PROBE` so the slider tracks the stored hue.
  */
 export function hslHue(color: OklchColor): number {
-  const src = isAchromatic(color) ? { ...color, ...ACHROMATIC_HUE_PROBE } : color;
+  const src = isAchromatic(color)
+    ? { ...color, ...ACHROMATIC_HUE_PROBE }
+    : color;
   const c = toHsl({ mode: "oklch", l: src.l, c: src.c, h: src.h });
   return c?.h ?? color.h;
 }
@@ -362,7 +400,9 @@ export function hslHue(color: OklchColor): number {
  * Hue of an OKLCH color in HSB/HSV's hue scale (degrees). See `hslHue`.
  */
 export function hsbHue(color: OklchColor): number {
-  const src = isAchromatic(color) ? { ...color, ...ACHROMATIC_HUE_PROBE } : color;
+  const src = isAchromatic(color)
+    ? { ...color, ...ACHROMATIC_HUE_PROBE }
+    : color;
   const c = toHsv({ mode: "oklch", l: src.l, c: src.c, h: src.h });
   return c?.h ?? color.h;
 }
@@ -400,10 +440,7 @@ export function gamutFromFormat(f: ColorFormat): Gamut {
  * around the best candidate. ~52 `findMaxChroma` calls per cusp lookup,
  * which is cheap enough to call once per repaint per active hue.
  */
-export function findCusp(
-  hDeg: number,
-  gamut: Gamut,
-): { l: number; c: number } {
+export function findCusp(hDeg: number, gamut: Gamut): { l: number; c: number } {
   let bestL = 0.5;
   let bestC = 0;
   for (let i = 1; i < 32; i++) {
@@ -455,7 +492,10 @@ export function toGamut(color: OklchColor, gamut: Gamut): OklchColor {
  * strings and channel readouts read through this.
  */
 export function srgbClamped(color: OklchColor) {
-  const rgb = toRgb({ mode: "oklch", ...oklchObj(mapToGamutColor(color, "srgb")) });
+  const rgb = toRgb({
+    mode: "oklch",
+    ...oklchObj(mapToGamutColor(color, "srgb")),
+  });
   const ch = (v: number | undefined) => round(clamp(v ?? 0, 0, 1), 6);
   return { mode: "rgb" as const, r: ch(rgb?.r), g: ch(rgb?.g), b: ch(rgb?.b) };
 }
@@ -468,9 +508,14 @@ function mapToGamutColor(color: OklchColor, gamut: Gamut): OklchColor {
   // `gamutInfo` and leave such colors untouched (`srgbClamped` clamps the
   // leftover slack for HSL/HSV output).
   const inGamut =
-    gamut === "srgb" ? isInSrgb(ok) : gamut === "p3" ? isInP3(ok) : isInRec2020(ok);
+    gamut === "srgb"
+      ? isInSrgb(ok)
+      : gamut === "p3"
+        ? isInP3(ok)
+        : isInRec2020(ok);
   if (inGamut) return color;
-  const targetMode = gamut === "srgb" ? "rgb" : gamut === "p3" ? "p3" : "rec2020";
+  const targetMode =
+    gamut === "srgb" ? "rgb" : gamut === "p3" ? "p3" : "rec2020";
   const mapper = culoriToGamut(targetMode, "oklch");
   const mapped = mapper(ok) as Color | undefined;
   if (!mapped) return color;
@@ -574,12 +619,12 @@ function sapcLuminance(r: number, g: number, b: number): number {
 }
 
 function sapcContrast(Ytxt: number, Ybg: number): number {
-  const txt = Ytxt < SA98G.blkThrs
-    ? Ytxt + (SA98G.blkThrs - Ytxt) ** SA98G.blkClmp
-    : Ytxt;
-  const bg = Ybg < SA98G.blkThrs
-    ? Ybg + (SA98G.blkThrs - Ybg) ** SA98G.blkClmp
-    : Ybg;
+  const txt =
+    Ytxt < SA98G.blkThrs
+      ? Ytxt + (SA98G.blkThrs - Ytxt) ** SA98G.blkClmp
+      : Ytxt;
+  const bg =
+    Ybg < SA98G.blkThrs ? Ybg + (SA98G.blkThrs - Ybg) ** SA98G.blkClmp : Ybg;
 
   if (Math.abs(bg - txt) < SA98G.deltaYmin) return 0;
 

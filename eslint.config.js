@@ -1,32 +1,25 @@
-import js from "@eslint/js";
 import ts from "typescript-eslint";
 import hooks from "eslint-plugin-react-hooks";
-import globals from "globals";
 
-export default ts.config(
+// Oxlint owns JS/TS and JSX rules. Keep the official React analysis until
+// Oxlint's native Compiler port is stable and its coverage is verified.
+export default [
   {
     ignores: [
       "dist/**",
       "node_modules/**",
       "artifacts/**",
+      "coverage/**",
+      "test-results/**",
+      "playwright-report/**",
       "worker-configuration.d.ts",
+      "**/*.generated.*",
     ],
   },
-  js.configs.recommended,
-  ...ts.configs.recommended,
-  { languageOptions: { globals: { ...globals.browser, ...globals.node } } },
   {
     files: ["src/**/*.{ts,tsx}"],
+    languageOptions: { parser: ts.parser },
     plugins: { "react-hooks": hooks },
     rules: hooks.configs["recommended-latest"].rules,
   },
-  {
-    files: ["src/components/ui/amplo/**/*.{ts,tsx}"],
-    rules: {
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { varsIgnorePattern: "^_", argsIgnorePattern: "^_" },
-      ],
-    },
-  },
-);
+];

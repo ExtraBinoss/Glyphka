@@ -1,5 +1,4 @@
 import { useAtom } from "jotai";
-import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { PreferenceGroup } from "./PreferenceGroup";
@@ -10,7 +9,7 @@ export function Preferences() {
   const [theme, setTheme] = useAtom(themeAtom);
   function changeTheme(value: string) {
     const apply = () => {
-      flushSync(() => setTheme(value));
+      setTheme(value);
       applyTheme(value);
       try {
         localStorage.setItem("glyphka.theme", value);

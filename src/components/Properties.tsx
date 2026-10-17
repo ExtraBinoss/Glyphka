@@ -1,6 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { AnimatePresence, m } from "motion/react";
-import { preloadThree } from "./CanvasView";
 import { useTranslation } from "react-i18next";
 import {
   ArrowDown,
@@ -11,10 +10,10 @@ import {
   Trash2,
   X,
   Dice5,
-  Box,
 } from "lucide-react";
 import {
   DEFAULT_DESIGN,
+  normalizeText,
   FAMILIES,
   LIMITS,
   PRESETS,
@@ -33,6 +32,7 @@ import {
   viewAtom,
 } from "@/state/studio";
 import { Lettering, ShapeMark } from "./Drawing";
+import { serializeSvg, random } from "@/engine/geometry";
 import { RangeField } from "./RangeField";
 import {
   Accordion,
@@ -49,11 +49,19 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "./ui/popover";
-import { random } from "@/engine/geometry";
-import { normalizeText } from "@/engine/model";
 import { InkPicker } from "./InkPicker";
 import { RenderProperties } from "./RenderProperties";
 import { ScrollShadow } from "./ScrollShadow";
+import { ControlHint } from "./ControlHint";
+
+// Family samples are independent from live slider values and contain no
+// animation subscriptions. CSS masks preserve their currentColor tint.
+const familyImages = Object.fromEntries(
+  FAMILIES.map((family) => [
+    family,
+    `url("data:image/svg+xml,${encodeURIComponent(serializeSvg({ ...DEFAULT_DESIGN, ...PRESETS[family], text: "PA", alternates: {} }, "wordmark", "#000000"))}")`,
+  ]),
+);
 
 function randomShapeParameters(): Partial<Shape> {
   const seed = crypto.getRandomValues(new Uint32Array(1))[0] % 2147483647,
@@ -135,7 +143,7 @@ const SHAPE_FIELDS: {
   },
 ];
 
-export function AddShape() {
+export function AddShape({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation(),
     edit = useSetAtom(editAtom),
     select = useSetAtom(selectedShapeAtom);
@@ -165,10 +173,20 @@ export function AddShape() {
   };
   return (
     <Popover>
-      <PopoverTrigger render={<Button variant="outline" size="sm" />}>
-        <Plus />
-        {t("addShape")}
-      </PopoverTrigger>
+      <ControlHint label={t("addShape")} enabled={compact}>
+        <PopoverTrigger
+          render={
+            <Button
+              variant={compact ? "ghost" : "outline"}
+              size={compact ? "icon-sm" : "sm"}
+            />
+          }
+          aria-label={t("addShape")}
+        >
+          <Plus />
+          {!compact && t("addShape")}
+        </PopoverTrigger>
+      </ControlHint>
       <PopoverContent
         side="bottom"
         align="end"
@@ -459,7 +477,7 @@ export function Properties({ onClose }: { onClose: () => void }) {
     mode = useAtomValue(modeAtom),
     setMode = useSetAtom(modeAtom),
     [selected, setSelected] = useAtom(selectedGlyphAtom),
-    [view, setView] = useAtom(viewAtom);
+    view = useAtomValue(viewAtom);
   const alternateBase = Math.floor((design.alternates[selected] ?? 0) / 4) * 4;
   const safeSelected = Math.min(selected, Math.max(0, design.text.length - 1));
   const change = (key: GeometryKey, value: number) =>
@@ -469,17 +487,6 @@ export function Properties({ onClose }: { onClose: () => void }) {
       <header className="panel-header">
         <h2>{t(mode)}</h2>
         <div>
-          <Button
-            variant={view === "3d" ? "secondary" : "ghost"}
-            size="icon-sm"
-            aria-label={t("render3d")}
-            aria-pressed={view === "3d"}
-            onPointerEnter={preloadThree}
-            onFocus={preloadThree}
-            onClick={() => setView(view === "3d" ? "2d" : "3d")}
-          >
-            <Box />
-          </Button>
           <Button
             variant="ghost"
             size="icon-sm"
@@ -507,14 +514,13 @@ export function Properties({ onClose }: { onClose: () => void }) {
         </div>
       </header>
       <ScrollShadow className="panel-scroll" label={t("settings")}>
-        <InkPicker />
         <AnimatePresence initial={false}>
           {view === "3d" && (
             <m.div
               key="render"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.28 }}
               className="render-properties-motion"
             >
@@ -566,12 +572,12 @@ export function Properties({ onClose }: { onClose: () => void }) {
                           edit({ ...PRESETS[family], alternates: {} })
                         }
                       >
-                        <Lettering
-                          design={{
-                            ...design,
-                            ...PRESETS[family],
-                            text: "PA",
-                            alternates: {},
+                        <i
+                          className="family-preview"
+                          aria-hidden
+                          style={{
+                            maskImage: familyImages[family],
+                            WebkitMaskImage: familyImages[family],
                           }}
                         />
                         <span>{t(family)}</span>
@@ -631,7 +637,7 @@ export function Properties({ onClose }: { onClose: () => void }) {
                         </Button>
                       </div>
                       <div className="letter-strip">
-                        {[...design.text].map((char, index) => (
+                        {Array.from(design.text).map((char, index) => (
                           <Button
                             key={index}
                             variant={
@@ -689,6 +695,7 @@ export function Properties({ onClose }: { onClose: () => void }) {
             )}
           </m.div>
         </AnimatePresence>
+        <InkPicker />
       </ScrollShadow>
     </aside>
   );

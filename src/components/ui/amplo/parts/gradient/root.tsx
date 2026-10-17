@@ -15,7 +15,8 @@ import {
 } from "../../hooks/use-gradient-picker";
 
 export interface RootProps
-  extends UseGradientPickerProps,
+  extends
+    UseGradientPickerProps,
     Omit<React.HTMLAttributes<HTMLDivElement>, "defaultValue" | "onChange"> {
   /**
    * Editor mounted around each `<Bar editOnClick>` stop handle. Each barrel

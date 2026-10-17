@@ -659,7 +659,9 @@ export function parseColor(
   if (hex) {
     let digits = hex[1];
     if (digits.length <= 4) {
-      digits = [...digits].map((digit) => digit + digit).join("");
+      digits = Array.from(digits)
+        .map((digit) => digit + digit)
+        .join("");
     }
     const byte = (index: number) =>
       parseInt(digits.slice(index, index + 2), 16);
@@ -2926,6 +2928,9 @@ export function ColorPickerSwatchItem({
     "#000";
   const inactive = disabled || !color;
 
+  // Focus and keyboard selection live on the parent listbox via
+  // aria-activedescendant; options intentionally do not add tab stops.
+  /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus */
   return (
     <div
       id={id}
@@ -2955,4 +2960,5 @@ export function ColorPickerSwatchItem({
       {selected && <CheckIcon aria-hidden="true" />}
     </div>
   );
+  /* oxlint-enable jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus */
 }

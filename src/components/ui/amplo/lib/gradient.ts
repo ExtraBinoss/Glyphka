@@ -4,12 +4,7 @@ import { formatColor, parseColor } from "./color";
 
 export type GradientType = "linear" | "radial" | "conic";
 
-export type GradientInterp =
-  | "oklch"
-  | "oklab"
-  | "srgb"
-  | "hsl"
-  | "hsl-longer";
+export type GradientInterp = "oklch" | "oklab" | "srgb" | "hsl" | "hsl-longer";
 
 export interface GradientStop {
   color: OklchColor;
@@ -476,10 +471,7 @@ function parseStops(parts: string[]): GradientStop[] | null {
  * intentionally approximated. Returns null for invalid pairs
  * (`to left right`).
  */
-function sideOrCornerAngle(
-  a: string,
-  b: string | undefined,
-): number | null {
+function sideOrCornerAngle(a: string, b: string | undefined): number | null {
   const set = new Set([a.toLowerCase(), ...(b ? [b.toLowerCase()] : [])]);
   if (b && set.size !== 2) return null;
   const has = (s: string) => set.has(s);
@@ -584,7 +576,11 @@ function parseRadialHeader(head: string): RadialHeader | null {
   let shape: "circle" | "ellipse" | undefined;
   let size: RadialSizeKeyword | undefined;
   const lengths: string[] = [];
-  for (const tok of beforeAt.trim().toLowerCase().split(/\s+/).filter(Boolean)) {
+  for (const tok of beforeAt
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)) {
     if (tok === "circle" || tok === "ellipse") {
       if (shape) return null;
       shape = tok;
@@ -766,7 +762,7 @@ function lerpHue(a: number, b: number, t: number): number {
   let d = b - a;
   if (d > 180) d -= 360;
   else if (d < -180) d += 360;
-  return ((a + d * t) % 360 + 360) % 360;
+  return (((a + d * t) % 360) + 360) % 360;
 }
 
 /**

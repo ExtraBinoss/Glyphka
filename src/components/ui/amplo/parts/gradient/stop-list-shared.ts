@@ -46,7 +46,10 @@ export function stopListKeyNav(e: React.KeyboardEvent<HTMLElement>): void {
   else if (e.key === "End") next = options.length - 1;
   else {
     const delta = e.key === "ArrowDown" ? 1 : -1;
-    next = Math.max(0, Math.min(Math.max(current, 0) + delta, options.length - 1));
+    next = Math.max(
+      0,
+      Math.min(Math.max(current, 0) + delta, options.length - 1),
+    );
   }
   e.preventDefault();
   options[next].focus();
@@ -117,7 +120,10 @@ function findOptionSibling(
  */
 export function insertStopAfterSelected<
   T extends { id: string; position: number; color: OklchColor },
->(stops: readonly T[], selectedStopId: string | null): {
+>(
+  stops: readonly T[],
+  selectedStopId: string | null,
+): {
   position: number;
   color: OklchColor;
 } {
@@ -126,7 +132,8 @@ export function insertStopAfterSelected<
   // non-empty constraint), so a controlled consumer can hand us one. There is
   // no anchor to place relative to — drop the first stop at 0 and let
   // sampleStopsAt supply its neutral fallback color.
-  if (sorted.length === 0) return { position: 0, color: sampleStopsAt(sorted, 0) };
+  if (sorted.length === 0)
+    return { position: 0, color: sampleStopsAt(sorted, 0) };
   const selectedIdx = sorted.findIndex((x) => x.id === selectedStopId);
   const anchorIdx = selectedIdx === -1 ? sorted.length - 1 : selectedIdx;
   const anchor = sorted[anchorIdx];
