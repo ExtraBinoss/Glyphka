@@ -49,6 +49,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { CanvasView } from "@/components/CanvasView";
+import { ControlHint } from "@/components/ControlHint";
 import { AddShape, Properties } from "@/components/Properties";
 import { Variations } from "@/components/Variations";
 import { generateVariations } from "@/components/Variations";
@@ -170,13 +171,15 @@ function ExportControls({ notify }: { notify: (message: string) => void }) {
           {view === "3d" ? "PNG" : t("svg")}
         </Button>
         <Popover>
-          <PopoverTrigger
-            render={<Button size="sm" />}
-            className="export-menu"
-            aria-label={t("download")}
-          >
-            <ChevronDown />
-          </PopoverTrigger>
+          <ControlHint label={t("download")}>
+            <PopoverTrigger
+              render={<Button size="sm" />}
+              className="export-menu"
+              aria-label={t("download")}
+            >
+              <ChevronDown />
+            </PopoverTrigger>
+          </ControlHint>
           <PopoverContent
             align="end"
             sideOffset={12}

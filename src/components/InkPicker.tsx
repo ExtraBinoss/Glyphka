@@ -15,6 +15,7 @@ import { Button } from "./ui/button";
 import { GradientEditor } from "./GradientEditor";
 import { DEFAULT_GRADIENT, gradientCss } from "@/engine/paint";
 import { PreferenceGroup } from "./PreferenceGroup";
+import { ControlHint } from "./ControlHint";
 import {
   Popover,
   PopoverContent,
@@ -99,15 +100,17 @@ export function InkPicker() {
                 if (!open) commit();
               }}
             >
-              <PopoverTrigger
-                render={
-                  <button
-                    className="gradient-swatch"
-                    aria-label={t("editGradient")}
-                  />
-                }
-                style={{ background: gradientCss(design.gradient) }}
-              />
+              <ControlHint label={t("editGradient")}>
+                <PopoverTrigger
+                  render={
+                    <button
+                      className="gradient-swatch"
+                      aria-label={t("editGradient")}
+                    />
+                  }
+                  style={{ background: gradientCss(design.gradient) }}
+                />
+              </ControlHint>
               <PopoverContent
                 className="gradient-popover bg-popover/90 backdrop-blur-xl"
                 side="left"
@@ -132,13 +135,15 @@ export function InkPicker() {
             }
           }}
         >
-          <PopoverTrigger
-            render={
-              <button className="custom-swatch" aria-label={t("custom")} />
-            }
-          >
-            <Plus size={14} />
-          </PopoverTrigger>
+          <ControlHint label={t("custom")}>
+            <PopoverTrigger
+              render={
+                <button className="custom-swatch" aria-label={t("custom")} />
+              }
+            >
+              <Plus size={14} />
+            </PopoverTrigger>
+          </ControlHint>
           <PopoverContent
             className="ink-popover bg-popover/80 backdrop-blur-xl"
             side="top"
