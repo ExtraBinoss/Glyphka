@@ -28,6 +28,7 @@ import {
   selectedGlyphAtom,
   selectedShapeAtom,
   renderPanelAtom,
+  viewAtom,
 } from "@/state/studio";
 import { Lettering, ShapeMark } from "./Drawing";
 import { RangeField } from "./RangeField";
@@ -454,7 +455,8 @@ export function Properties({ onClose }: { onClose: () => void }) {
     edit = useSetAtom(editAtom),
     mode = useAtomValue(modeAtom),
     [selected, setSelected] = useAtom(selectedGlyphAtom),
-    [renderPanel, setRenderPanel] = useAtom(renderPanelAtom);
+    [renderPanel, setRenderPanel] = useAtom(renderPanelAtom),
+    setView = useSetAtom(viewAtom);
   const alternateBase = Math.floor((design.alternates[selected] ?? 0) / 4) * 4;
   const safeSelected = Math.min(selected, Math.max(0, design.text.length - 1));
   const change = (key: GeometryKey, value: number) =>
@@ -502,7 +504,10 @@ export function Properties({ onClose }: { onClose: () => void }) {
           <Button
             variant={renderPanel ? "default" : "ghost"}
             size="sm"
-            onClick={() => setRenderPanel(true)}
+            onClick={() => {
+              setRenderPanel(true);
+              setView("3d");
+            }}
           >
             {t("render3d")}
           </Button>

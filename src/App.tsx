@@ -213,7 +213,11 @@ function ExportControls({ notify }: { notify: (message: string) => void }) {
               <ArrowDownToLine />
               SVG<span className="muted">Vector</span>
             </Button>
-            <Button variant="ghost" onClick={() => void png()} disabled={busy}>
+            <Button
+              variant="ghost"
+              onClick={() => void png()}
+              disabled={busy || (view === "3d" && !api)}
+            >
               <ArrowDownToLine />
               PNG<span className="muted">2×</span>
             </Button>

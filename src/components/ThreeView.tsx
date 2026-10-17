@@ -24,20 +24,24 @@ export default function ThreeView() {
     let instance: ThreeStudio;
     try {
       instance = new ThreeStudio(host.current, design.render, (error) => {
+        if (error) setApi(null);
+        else {
+          setApi({
+            png: () => instance.png(),
+            reset: () => instance.reset(),
+            front: () => instance.view(true),
+            perspective: () => instance.view(false),
+            zoom: (percent) => instance.zoom(percent),
+          });
+        }
         setStatus(error ? "error" : "ready");
         if (host.current) {
           host.current.dataset.ready = error ? "false" : "true";
           if (error) host.current.dataset.error = error;
+          else delete host.current.dataset.error;
         }
       });
       studio.current = instance;
-      setApi({
-        png: () => instance.png(),
-        reset: () => instance.reset(),
-        front: () => instance.view(true),
-        perspective: () => instance.view(false),
-        zoom: (percent) => instance.zoom(percent),
-      });
     } catch {
       queueMicrotask(() => setStatus("unavailable"));
       return;
