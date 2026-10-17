@@ -10,8 +10,37 @@ import {
   validateDesign,
 } from "./model";
 import { generateComposition } from "./generate";
+import { DEFAULT_GRADIENT } from "./paint";
 
 describe("generated vector geometry", () => {
+  it("exports whole-design linear and radial gradients while preserving transparent cutouts", () => {
+    for (const type of ["linear", "radial"] as const)
+      for (const mode of ["wordmark", "symbol", "shapes"] as const) {
+        const design = {
+          ...DEFAULT_DESIGN,
+          gradient: { ...DEFAULT_GRADIENT, type },
+        };
+        const svg = serializeSvg(design, mode, "#2563eb");
+        expect(svg).toContain(`<${type}Gradient`);
+        expect(svg).toContain('mask="url(#paint-mask)"');
+        expect(svg).toContain('stop-color="#a855f7"');
+        expect(svg).not.toMatch(/NaN|Infinity|currentColor|var\(/);
+        expect(buildDrawing(design)).toEqual(buildDrawing(DEFAULT_DESIGN));
+        expect(validateDesign(design).gradient?.stops).toHaveLength(2);
+      }
+    expect(
+      validateDesign({
+        ...DEFAULT_DESIGN,
+        gradient: {
+          ...DEFAULT_GRADIENT,
+          stops: [
+            { color: "url(evil)", position: 0 },
+            { color: "#ffffff", position: 1 },
+          ],
+        },
+      }).gradient,
+    ).toBeUndefined();
+  });
   it("constructs a real vector glyph for the complete alphabet and digits in every family", () => {
     for (const family of FAMILIES)
       for (const char of "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-+") {

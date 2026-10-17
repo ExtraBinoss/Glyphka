@@ -20,4 +20,13 @@ export default ts.config(
     plugins: { "react-hooks": hooks },
     rules: hooks.configs["recommended-latest"].rules,
   },
+  {
+    files: ["src/components/ui/amplo/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { varsIgnorePattern: "^_", argsIgnorePattern: "^_" },
+      ],
+    },
+  },
 );

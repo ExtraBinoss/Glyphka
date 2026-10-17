@@ -18,6 +18,8 @@ type Drag = {
   action: "move" | "resize" | "rotate";
   corner?: [number, number];
 };
+import { SvgPaint } from "./SvgPaint";
+
 export function ShapeCanvas({ ink }: { ink: string }) {
   const design = useAtomValue(designAtom),
     guides = useAtomValue(guidesAtom),
@@ -138,18 +140,24 @@ export function ShapeCanvas({ ink }: { ink: string }) {
           ))}
         </g>
       )}
-      <g mask={`url(#${id})`} fill={ink}>
-        {design.shapes
-          .filter((s) => !s.cutout)
-          .map((s) => (
-            <path
-              key={s.id}
-              d={shapePath(s, design.weight)}
-              transform={`translate(${s.x} ${s.y}) rotate(${s.rotation})`}
-              fillRule="evenodd"
-            />
-          ))}
-      </g>
+      <SvgPaint width={600} height={440}>
+        <g
+          mask={`url(#${id})`}
+          fill={ink}
+          style={{ fill: "var(--glyph-paint)" }}
+        >
+          {design.shapes
+            .filter((s) => !s.cutout)
+            .map((s) => (
+              <path
+                key={s.id}
+                d={shapePath(s, design.weight)}
+                transform={`translate(${s.x} ${s.y}) rotate(${s.rotation})`}
+                fillRule="evenodd"
+              />
+            ))}
+        </g>
+      </SvgPaint>
       {design.shapes.map((s) => (
         <ShapeOverlay
           key={s.id}

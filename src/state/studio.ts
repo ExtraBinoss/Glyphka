@@ -4,6 +4,7 @@ import {
   validateDesign,
   type Design,
   type Mode,
+  type GradientFill,
 } from "@/engine/model";
 
 const STORAGE = "glyphka.design.v1";
@@ -26,13 +27,29 @@ interface History {
 }
 const historyAtom = atom<History>({ past: [], present: load(), future: [] });
 export const designAtom = atom((get) => get(historyAtom).present);
+export interface Paint {
+  color: string;
+  gradient?: GradientFill | null;
+}
+const previewPaintAtom = atom<Paint | null>(null);
+export const paintAtom = atom(
+  (get): Paint => get(previewPaintAtom) ?? get(designAtom),
+);
+export const previewColorAtom = atom(null, (_get, set, paint: Paint) => {
+  set(previewPaintAtom, paint);
+});
+export const commitPaintAtom = atom(null, (get, set) => {
+  const paint = get(previewPaintAtom);
+  if (!paint) return;
+  set(editAtom, { color: paint.color, gradient: paint.gradient ?? null });
+  set(previewPaintAtom, null);
+});
 export const modeAtom = atom<Mode>("wordmark");
 export const selectedGlyphAtom = atom(0);
 export const selectedShapeAtom = atom<string | null>(null);
 export const guidesAtom = atom(false);
 export const zoomAtom = atom(100);
 export const viewAtom = atom<"2d" | "3d">("2d");
-export const renderPanelAtom = atom(false);
 export interface ThreeApi {
   png: () => Promise<Blob>;
   reset: () => void;
@@ -94,6 +111,7 @@ export const endGestureAtom = atom(null, (get, set) => {
   lastDesign = get(designAtom);
 });
 export const undoAtom = atom(null, (get, set) => {
+  set(previewPaintAtom, null);
   gestureStart = null;
   const h = get(historyAtom),
     previous = h.past.at(-1);
@@ -106,6 +124,7 @@ export const undoAtom = atom(null, (get, set) => {
   scheduleSave(previous);
 });
 export const redoAtom = atom(null, (get, set) => {
+  set(previewPaintAtom, null);
   gestureStart = null;
   const h = get(historyAtom),
     next = h.future[0];

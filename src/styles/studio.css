@@ -174,13 +174,13 @@
   height: auto;
   display: block;
 }
-.mode-symbol .drawing-scale {
+.drawing-area[data-mode="symbol"] .drawing-scale {
   width: min(72%, 470px);
 }
-.mode-symbol .drawing-area {
+.drawing-area[data-mode="symbol"] {
   padding: 0;
 }
-.mode-symbol .lettering {
+.drawing-area[data-mode="symbol"] .lettering {
   max-height: min(47dvh, 490px);
 }
 .interactive-glyph {
@@ -345,6 +345,40 @@
   min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+}
+.scroll-shadow {
+  --scroll-shadow-top: 0px;
+  --scroll-shadow-bottom: 0px;
+  --scroll-shadow-size: 20px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 22%, transparent)
+    transparent;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--scroll-shadow-top),
+    black calc(100% - var(--scroll-shadow-bottom)),
+    transparent
+  );
+}
+.scroll-shadow[data-scroll-top="true"] {
+  --scroll-shadow-top: var(--scroll-shadow-size);
+}
+.scroll-shadow[data-scroll-bottom="true"] {
+  --scroll-shadow-bottom: var(--scroll-shadow-size);
+}
+.scroll-shadow::-webkit-scrollbar {
+  width: 4px;
+}
+.scroll-shadow::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+.panel-scroll.scroll-shadow {
+  --scroll-shadow-size: 28px;
 }
 .panel-section {
   padding: 14px 20px 19px;
@@ -568,21 +602,6 @@
   cursor: pointer;
   padding: 0;
   border: 0;
-}
-.panel-note {
-  border-top: 1px solid var(--border);
-  padding: 11px 20px;
-  color: var(--muted-foreground);
-  font-size: 10px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.status-dot {
-  width: 4px;
-  height: 4px;
-  background: #22a78b;
-  border-radius: 50%;
 }
 .section-heading {
   display: flex;
@@ -1053,10 +1072,10 @@
     bottom: 12px;
     width: min(340px, calc(100% - 24px));
   }
-  .mode-symbol .drawing-scale {
+  .drawing-area[data-mode="symbol"] .drawing-scale {
     width: min(85%, 380px);
   }
-  .mode-symbol .lettering {
+  .drawing-area[data-mode="symbol"] .lettering {
     max-height: 36dvh;
   }
   .about {
@@ -1182,7 +1201,11 @@
   scrollbar-color: var(--border) transparent;
 }
 .shape-popover {
-  max-height: min(560px, 80dvh);
+  max-height: min(560px, 80dvh, var(--available-height, 80dvh));
+}
+.shape-popover > [data-slot="popover-title"],
+.shape-popover > .generate-shape {
+  flex-shrink: 0;
 }
 .shape-grid {
   overflow-y: auto;
@@ -1383,4 +1406,75 @@
 
 .mode-about .studio-header {
   display: none;
+}
+
+/* Editor transitions and fill controls. */
+.three-canvas-transition {
+  position: absolute;
+  inset: 0;
+}
+.three-view {
+  inset: 10px 0;
+}
+.variation-reveal,
+.render-properties-motion,
+.gradient-preview-row {
+  overflow: hidden;
+}
+.variation-reveal {
+  margin-inline: -4px;
+  padding-inline: 4px;
+}
+.variation-grid {
+  padding-block: 4px;
+}
+.variations.collapsed .variation-heading {
+  padding-bottom: 0;
+}
+.color-section {
+  border-bottom: 1px solid var(--border);
+}
+.color-section > .preference-group {
+  margin-bottom: 14px;
+}
+.color-section:has(.gradient-swatch) .palette {
+  display: none;
+}
+.gradient-swatch {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--control-border);
+  border-radius: 9px;
+  display: block;
+}
+.gradient-popover {
+  width: min(304px, calc(100vw - 32px));
+  max-height: min(690px, var(--available-height, 90dvh));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  background: color-mix(in srgb, var(--popover) 96%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.gradient-editor {
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  gap: 14px;
+}
+.gradient-stop-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.gradient-stop-actions > span {
+  margin-right: auto;
+}
+.gradient-editor [data-slot="gradient-bar"] {
+  margin-block: 5px;
 }

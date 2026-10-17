@@ -14,3 +14,6 @@ ReUI color picker — MIT (ReUI-LICENSE.txt)
 Three.js — MIT (Three-LICENSE.txt)
 JavaScript Clipper — Boost Software License 1.0 (Clipper-LICENSE.txt)
 shadcn/ui — MIT (shadcn-LICENSE.txt)
+Amplo gradient picker — MIT (amplo.txt)
+Source: https://github.com/TheAleSch/amplo-picker
+Culori color conversions — MIT (Culori-LICENSE.txt)

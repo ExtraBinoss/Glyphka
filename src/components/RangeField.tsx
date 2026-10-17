@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSetAtom } from "jotai";
 import { RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function RangeField({
   onChange: (v: number) => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
+  const { t } = useTranslation();
   const begin = useSetAtom(beginGestureAtom),
     end = useSetAtom(endGestureAtom);
   const commit = () => {
@@ -46,8 +48,7 @@ export function RangeField({
               variant="ghost"
               size="icon-xs"
               className="range-reset"
-              aria-label={`${label} · reset`}
-              title={`${label} · reset`}
+              aria-label={`${label} · ${t("reset")}`}
               onClick={() => onChange(initial)}
             >
               <RotateCcw />

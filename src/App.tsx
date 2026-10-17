@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { AnimatePresence, m } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -16,7 +16,6 @@ import {
   Shapes,
   SlidersHorizontal,
   Dice5,
-  Box,
   Type,
   Undo2,
   X,
@@ -30,6 +29,7 @@ import {
   designAtom,
   editAtom,
   endGestureAtom,
+  commitPaintAtom,
   guidesAtom,
   modeAtom,
   redoAtom,
@@ -38,7 +38,6 @@ import {
   undoAtom,
   zoomAtom,
   viewAtom,
-  renderPanelAtom,
   threeApiAtom,
 } from "@/state/studio";
 import { Button } from "@/components/ui/button";
@@ -49,8 +48,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Lettering } from "@/components/Drawing";
-import { ShapeCanvas } from "@/components/ShapeCanvas";
+import { CanvasView } from "@/components/CanvasView";
 import { AddShape, Properties } from "@/components/Properties";
 import { Variations } from "@/components/Variations";
 import { generateVariations } from "@/components/Variations";
@@ -58,30 +56,6 @@ import { generateVariations } from "@/components/Variations";
 import { RangeField } from "@/components/RangeField";
 import { download, exportPng } from "@/lib/export";
 import { useThemeSync } from "@/state/theme";
-import { PreferenceGroup } from "@/components/PreferenceGroup";
-const loadThree = () => import("@/components/ThreeView");
-const ThreeView = lazy(loadThree);
-function ViewToggle() {
-  const { t } = useTranslation(),
-    [view, setView] = useAtom(viewAtom),
-    setPanel = useSetAtom(renderPanelAtom);
-  return (
-    <div className="view-toggle" onPointerEnter={() => void loadThree()}>
-      <PreferenceGroup
-        label={t("view")}
-        value={view}
-        options={[
-          { value: "2d", label: "2D" },
-          { value: "3d", label: "3D", Icon: Box },
-        ]}
-        onChange={(value) => {
-          setView(value as "2d" | "3d");
-          setPanel(value === "3d");
-        }}
-      />
-    </div>
-  );
-}
 
 function Navigation() {
   const { t } = useTranslation(),
@@ -330,25 +304,25 @@ export function App() {
     [mode] = useAtom(modeAtom),
     design = useAtomValue(designAtom),
     edit = useSetAtom(editAtom),
-    [selected, setSelected] = useAtom(selectedGlyphAtom),
     selectedShape = useAtomValue(selectedShapeAtom),
-    guides = useAtomValue(guidesAtom),
-    zoom = useAtomValue(zoomAtom),
     undo = useSetAtom(undoAtom),
     redo = useSetAtom(redoAtom),
     end = useSetAtom(endGestureAtom),
+    commitPaint = useSetAtom(commitPaintAtom),
     view = useAtomValue(viewAtom);
   const [roll, setRoll] = useState(0);
   const [panelOpen, setPanelOpen] = useState(false),
     [toast, setToast] = useState("");
-  const ink = design.color === "auto" ? "var(--foreground)" : design.color;
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 2600);
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    const finish = () => end();
+    const finish = () => {
+      commitPaint();
+      end();
+    };
     const key = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (
@@ -409,8 +383,7 @@ export function App() {
       window.removeEventListener("pointercancel", finish);
       window.removeEventListener("blur", finish);
     };
-  }, [mode, selectedShape, design.shapes, edit, undo, redo, end]);
-  const currentMode = mode === "about" ? "wordmark" : mode;
+  }, [mode, selectedShape, design.shapes, edit, undo, redo, end, commitPaint]);
   return (
     <div
       className={`studio mode-${mode} view-${view} ${panelOpen ? "panel-open" : ""}`}
@@ -425,7 +398,6 @@ export function App() {
         >
           glyphka<span>.</span>
         </a>
-        <span className="studio-title">{t("studio")}</span>
       </header>
       {mode !== "about" && (
         <div className="top-actions">
@@ -480,76 +452,9 @@ export function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.3 }}
           >
-            <div
-              className={`canvas-area ${mode === "shapes" ? "composition-area" : ""}`}
-            >
-              <div className="canvas-meta">
-                <span>{t(currentMode)}</span>
-                <span>
-                  {mode === "shapes"
-                    ? String(design.shapes.length).padStart(2, "0")
-                    : design.text || "—"}
-                </span>
-                <ViewToggle />
-              </div>
-              {view === "3d" ? (
-                <Suspense
-                  fallback={
-                    <div className="three-status">
-                      <Box />
-                    </div>
-                  }
-                >
-                  <ThreeView />
-                </Suspense>
-              ) : (
-                <m.div
-                  className="drawing-area"
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
-                >
-                  <div
-                    className="drawing-scale"
-                    style={{ transform: `scale(${zoom / 100})` }}
-                  >
-                    {mode === "shapes" ? (
-                      <ShapeCanvas ink={ink} />
-                    ) : design.text ? (
-                      <Lettering
-                        design={design}
-                        ink={ink}
-                        singleIndex={
-                          mode === "symbol"
-                            ? Math.min(
-                                selected,
-                                Math.max(0, design.text.length - 1),
-                              )
-                            : undefined
-                        }
-                        guides={guides}
-                        selected={selected}
-                        onSelect={setSelected}
-                        label={design.text}
-                      />
-                    ) : (
-                      <p className="empty-word">{t("empty")}</p>
-                    )}
-                  </div>
-                </m.div>
-              )}
-              <p className="canvas-hint">
-                {view === "3d"
-                  ? t("orbitHint")
-                  : mode === "shapes"
-                    ? t("dragHint")
-                    : mode === "symbol"
-                      ? t("symbolHint")
-                      : t("selectHint")}
-              </p>
-            </div>
+            <CanvasView />
             {mode !== "shapes" && <Variations />}
             <Toolbar />
           </m.main>

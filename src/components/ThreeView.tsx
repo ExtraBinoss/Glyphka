@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import { Box } from "lucide-react";
+import { useAnimate } from "motion/react";
 import {
   designAtom,
+  paintAtom,
   modeAtom,
   selectedGlyphAtom,
   threeApiAtom,
@@ -12,6 +14,7 @@ import { ThreeStudio } from "@/lib/three-studio";
 
 export default function ThreeView() {
   const design = useAtomValue(designAtom),
+    paint = useAtomValue(paintAtom),
     mode = useAtomValue(modeAtom),
     selected = useAtomValue(selectedGlyphAtom),
     setApi = useSetAtom(threeApiAtom),
@@ -19,6 +22,15 @@ export default function ThreeView() {
   const host = useRef<HTMLDivElement>(null),
     studio = useRef<ThreeStudio | null>(null),
     [status, setStatus] = useState("loading");
+  const [scope, animate] = useAnimate();
+  useEffect(() => {
+    const animation = animate(
+      scope.current,
+      { opacity: [0.4, 1], scale: [0.98, 1] },
+      { duration: 0.32 },
+    );
+    return () => animation.stop();
+  }, [mode, animate, scope]);
   useEffect(() => {
     if (!host.current) return;
     let instance: ThreeStudio;
@@ -57,11 +69,11 @@ export default function ThreeView() {
   useEffect(() => {
     const update = () => {
       const ink =
-        design.color === "auto"
+        paint.color === "auto"
           ? getComputedStyle(document.documentElement)
               .getPropertyValue("--foreground")
               .trim()
-          : design.color;
+          : paint.color;
       studio.current?.update(
         design,
         mode === "shapes"
@@ -70,7 +82,7 @@ export default function ThreeView() {
             ? "symbol"
             : "wordmark",
         Math.min(selected, Math.max(0, design.text.length - 1)),
-        ink,
+        { color: ink, gradient: paint.gradient },
       );
     };
     update();
@@ -80,9 +92,9 @@ export default function ThreeView() {
       attributeFilter: ["class"],
     });
     return () => theme.disconnect();
-  }, [design, mode, selected]);
+  }, [design, mode, selected, paint]);
   return (
-    <div className="three-view">
+    <div ref={scope} className="three-view">
       <div ref={host} className="three-host" data-testid="three-scene" />
       {status !== "ready" && (
         <div className="three-status">

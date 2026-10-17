@@ -5,12 +5,15 @@ import "./i18n";
 import "./styles/global.css";
 import "./styles/studio.css";
 import { App } from "./App";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <LazyMotion features={domAnimation}>
       <MotionConfig reducedMotion="user">
-        <App />
+        <TooltipProvider delay={350}>
+          <App />
+        </TooltipProvider>
       </MotionConfig>
     </LazyMotion>
   </StrictMode>,

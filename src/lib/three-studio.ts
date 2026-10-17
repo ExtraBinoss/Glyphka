@@ -23,6 +23,8 @@ import {
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import type { Design, RenderSettings } from "@/engine/model";
+import type { Paint } from "@/state/studio";
+import { PaintTexture } from "./paint-texture";
 import type {
   GeometryReply,
   GeometryRequest,
@@ -57,6 +59,11 @@ export class ThreeStudio {
   private builtKey = "";
   private outlines: Mesh[] = [];
   private floorBase = 0;
+  private paint: Paint = { color: "#2563eb" };
+  private texture = new PaintTexture();
+  private documentWidth = 1;
+  private documentHeight = 1;
+  private shadowKey = "";
   private onReady: (error?: string) => void;
   constructor(
     private host: HTMLElement,
@@ -75,6 +82,7 @@ export class ThreeStudio {
     this.renderer.toneMapping = ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.85;
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.shadowMap.type = VSMShadowMap;
     this.renderer.domElement.setAttribute("aria-label", "3D");
     this.renderer.domElement.setAttribute("role", "img");
@@ -150,7 +158,7 @@ export class ThreeStudio {
     this.resizeObserver.observe(host);
     document.addEventListener("visibilitychange", this.visibility);
     this.resize();
-    this.apply(settings, "#2563eb");
+    this.apply(settings, this.paint);
   }
   get canvas() {
     return this.renderer.domElement;
@@ -163,12 +171,13 @@ export class ThreeStudio {
     design: Design,
     mode: "wordmark" | "symbol" | "shapes",
     selected: number,
-    ink: string,
+    paint: Paint,
   ) {
-    this.apply(design.render, ink);
-    const { render: _, color: __, ...geometry } = design;
+    this.apply(design.render, paint);
+    const { render: _, color: __, gradient: ___, ...geometry } = design;
     void _;
     void __;
+    void ___;
     const key = JSON.stringify([geometry, mode, selected]),
       meshKey = JSON.stringify([key, design.render.depth, design.render.bevel]);
     if (meshKey === this.builtKey) return;
@@ -208,15 +217,35 @@ export class ThreeStudio {
     );
     this.host.dataset.depth = String(this.settings.depth);
     this.floorBase = -(height / Math.max(width, height)) * 3 - 0.06;
-    this.apply(this.settings, this.face.color.getStyle());
+    this.documentWidth = width;
+    this.documentHeight = height;
+    this.renderer.shadowMap.needsUpdate = true;
+    this.apply(this.settings, this.paint);
     this.invalidate();
   }
-  private apply(settings: RenderSettings, ink: string) {
+  private apply(settings: RenderSettings, paint: Paint) {
     this.settings = settings;
-    this.face.color.set(ink);
+    this.paint = paint;
+    const map = this.texture.update(
+      paint.gradient,
+      this.documentWidth,
+      this.documentHeight,
+    );
+    if (!!this.face.map !== !!map) this.face.needsUpdate = true;
+    this.face.map = map;
+    this.face.color.set(map ? "#ffffff" : paint.color);
     this.face.roughness = settings.roughness;
     this.face.metalness = settings.metalness;
-    this.side.color.set(settings.separateSide ? settings.sideColor : ink);
+    const sideMap = settings.separateSide ? null : map;
+    if (!!this.side.map !== !!sideMap) this.side.needsUpdate = true;
+    this.side.map = sideMap;
+    this.side.color.set(
+      settings.separateSide
+        ? settings.sideColor
+        : map
+          ? "#ffffff"
+          : paint.color,
+    );
     this.side.roughness = settings.roughness;
     this.side.metalness = settings.metalness;
     this.outline.color.set(settings.outlineColor);
@@ -245,6 +274,23 @@ export class ThreeStudio {
     this.scene.background = settings.transparent
       ? null
       : new Color(settings.background);
+    const shadowKey = JSON.stringify([
+      settings.rotationX,
+      settings.rotationY,
+      settings.rotationZ,
+      settings.elevation,
+      settings.shadow,
+      settings.shadowSoftness,
+      settings.lightAngle,
+      settings.lightHeight,
+    ]);
+    if (shadowKey !== this.shadowKey) {
+      this.shadowKey = shadowKey;
+      this.renderer.shadowMap.needsUpdate = true;
+    }
+    this.host.dataset.paint = paint.gradient
+      ? JSON.stringify(paint.gradient)
+      : paint.color;
     this.invalidate();
   }
   private resize() {
@@ -327,6 +373,7 @@ export class ThreeStudio {
         child.geometry.dispose();
     this.floor.geometry.dispose();
     this.face.dispose();
+    this.texture.dispose();
     this.side.dispose();
     this.outline.dispose();
     this.shadowMaterial.dispose();

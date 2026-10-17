@@ -54,10 +54,16 @@ function extrude(doc: VectorDocument, design: Design) {
       bevelSegments: 3,
     });
     geometry.translate(0, 0, -depth / 2);
+    const positions = geometry.getAttribute("position").array as Float32Array;
+    const uvs = new Float32Array((positions.length / 3) * 2);
+    for (let i = 0; i < positions.length / 3; i++) {
+      uvs[i * 2] = positions[i * 3] / (doc.width * scale) + 0.5;
+      uvs[i * 2 + 1] = positions[i * 3 + 1] / (doc.height * scale) + 0.5;
+    }
     const mesh = {
-      positions: geometry.getAttribute("position").array as Float32Array,
+      positions,
       normals: geometry.getAttribute("normal").array as Float32Array,
-      uvs: geometry.getAttribute("uv").array as Float32Array,
+      uvs,
       groups: geometry.groups,
     };
     geometry.dispose();

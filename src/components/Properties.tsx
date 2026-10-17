@@ -1,4 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { AnimatePresence, m } from "motion/react";
+import { preloadThree } from "./CanvasView";
 import { useTranslation } from "react-i18next";
 import {
   ArrowDown,
@@ -9,6 +11,7 @@ import {
   Trash2,
   X,
   Dice5,
+  Box,
 } from "lucide-react";
 import {
   DEFAULT_DESIGN,
@@ -27,7 +30,6 @@ import {
   modeAtom,
   selectedGlyphAtom,
   selectedShapeAtom,
-  renderPanelAtom,
   viewAtom,
 } from "@/state/studio";
 import { Lettering, ShapeMark } from "./Drawing";
@@ -51,6 +53,7 @@ import { random } from "@/engine/geometry";
 import { normalizeText } from "@/engine/model";
 import { InkPicker } from "./InkPicker";
 import { RenderProperties } from "./RenderProperties";
+import { ScrollShadow } from "./ScrollShadow";
 
 function randomShapeParameters(): Partial<Shape> {
   const seed = crypto.getRandomValues(new Uint32Array(1))[0] % 2147483647,
@@ -181,7 +184,7 @@ export function AddShape() {
           <Dice5 />
           {t("addGenerated")}
         </Button>
-        <div className="shape-grid">
+        <ScrollShadow className="shape-grid" label={t("shapes")}>
           {SHAPE_KINDS.map((kind) => (
             <Button key={kind} variant="ghost" onClick={() => add(kind)}>
               <svg viewBox="-60 -60 120 120" aria-hidden="true">
@@ -202,7 +205,7 @@ export function AddShape() {
               <span>{t(kind)}</span>
             </Button>
           ))}
-        </div>
+        </ScrollShadow>
       </PopoverContent>
     </Popover>
   );
@@ -258,7 +261,7 @@ function ShapeProperties() {
           </h3>
           <AddShape />
         </div>
-        <div className="layers">
+        <ScrollShadow className="layers" label={t("layers")}>
           {[...design.shapes].reverse().map((s, i) => (
             <button
               key={s.id}
@@ -283,7 +286,7 @@ function ShapeProperties() {
               </small>
             </button>
           ))}
-        </div>
+        </ScrollShadow>
       </section>
       {shape ? (
         <section className="panel-section">
@@ -347,7 +350,7 @@ function ShapeProperties() {
             </Button>
           </ButtonGroup>
           <div className="geometry-fields">
-            <div className="shape-kind-select">
+            <ScrollShadow className="shape-kind-select" label={t("shapes")}>
               {SHAPE_KINDS.map((kind) => (
                 <button
                   key={kind}
@@ -364,7 +367,7 @@ function ShapeProperties() {
                   </svg>
                 </button>
               ))}
-            </div>
+            </ScrollShadow>
             <RangeField
               label={t("width")}
               value={shape.width}
@@ -454,9 +457,9 @@ export function Properties({ onClose }: { onClose: () => void }) {
     design = useAtomValue(designAtom),
     edit = useSetAtom(editAtom),
     mode = useAtomValue(modeAtom),
+    setMode = useSetAtom(modeAtom),
     [selected, setSelected] = useAtom(selectedGlyphAtom),
-    [renderPanel, setRenderPanel] = useAtom(renderPanelAtom),
-    setView = useSetAtom(viewAtom);
+    [view, setView] = useAtom(viewAtom);
   const alternateBase = Math.floor((design.alternates[selected] ?? 0) / 4) * 4;
   const safeSelected = Math.min(selected, Math.max(0, design.text.length - 1));
   const change = (key: GeometryKey, value: number) =>
@@ -464,8 +467,19 @@ export function Properties({ onClose }: { onClose: () => void }) {
   return (
     <aside className="properties glass" aria-label={t("settings")}>
       <header className="panel-header">
-        <h2>{mode === "shapes" ? t("shapes") : t("wordmark")}</h2>
+        <h2>{t(mode)}</h2>
         <div>
+          <Button
+            variant={view === "3d" ? "secondary" : "ghost"}
+            size="icon-sm"
+            aria-label={t("render3d")}
+            aria-pressed={view === "3d"}
+            onPointerEnter={preloadThree}
+            onFocus={preloadThree}
+            onClick={() => setView(view === "3d" ? "2d" : "3d")}
+          >
+            <Box />
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"
@@ -492,187 +506,190 @@ export function Properties({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
       </header>
-      <div className="panel-tabs">
-        <ButtonGroup>
-          <Button
-            variant={renderPanel ? "ghost" : "default"}
-            size="sm"
-            onClick={() => setRenderPanel(false)}
-          >
-            {t("editShape")}
-          </Button>
-          <Button
-            variant={renderPanel ? "default" : "ghost"}
-            size="sm"
-            onClick={() => {
-              setRenderPanel(true);
-              setView("3d");
-            }}
-          >
-            {t("render3d")}
-          </Button>
-        </ButtonGroup>
-      </div>
-      <div className="panel-scroll">
-        {renderPanel ? (
-          <RenderProperties />
-        ) : mode === "shapes" ? (
-          <ShapeProperties />
-        ) : (
-          <>
-            <section className="panel-section text-section">
-              <label htmlFor="word-input">{t("text")}</label>
-              <Input
-                id="word-input"
-                value={design.text}
-                onChange={(e) => {
-                  const text = normalizeText(e.target.value);
-                  edit({ text });
-                  if (selected >= text.length)
-                    setSelected(Math.max(0, text.length - 1));
-                }}
-                maxLength={36}
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="PLINKA"
-              />
-              <p className="micro muted">{t("textHint")}</p>
-            </section>
-            <section className="panel-section">
-              <h3>
-                {t("family")}
-                <span className="count"> {FAMILIES.length}</span>
-              </h3>
-              <div className="families">
-                {FAMILIES.map((family) => (
-                  <button
-                    key={family}
-                    className={`family ${family === design.family ? "active" : ""}`}
-                    aria-pressed={family === design.family}
-                    onClick={() => edit({ ...PRESETS[family], alternates: {} })}
-                  >
-                    <Lettering
-                      design={{
-                        ...design,
-                        ...PRESETS[family],
-                        text: "PA",
-                        alternates: {},
-                      }}
-                    />
-                    <span>{t(family)}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-            <Accordion
-              className="properties-accordion"
-              multiple
-              defaultValue={["geometry", "letter"]}
-            >
-              <AccordionItem value="geometry">
-                <AccordionTrigger>{t("geometry")}</AccordionTrigger>
-                <AccordionContent>
-                  <div className="geometry-fields">
-                    {(Object.keys(LIMITS) as GeometryKey[]).map((key) => (
-                      <RangeField
-                        key={key}
-                        label={t(key)}
-                        value={design[key]}
-                        min={LIMITS[key][0]}
-                        max={LIMITS[key][1]}
-                        initial={PRESETS[design.family][key] as number}
-                        unit={
-                          key === "slant"
-                            ? "°"
-                            : key === "roundness" || key === "cutouts"
-                              ? "%"
-                              : ""
-                        }
-                        onChange={(value) => change(key, value)}
-                      />
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="letter">
-                <AccordionTrigger>{t("selectedLetter")}</AccordionTrigger>
-                <AccordionContent>
-                  <div className="letter-variant-header">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={t("newDrawing")}
-                      onClick={() =>
-                        edit({
-                          alternates: {
-                            ...design.alternates,
-                            [safeSelected]: alternateBase + 4,
-                          },
-                        })
-                      }
-                    >
-                      <Dice5 />
-                      {t("newDrawing")}
-                    </Button>
-                  </div>
-                  <div className="letter-strip">
-                    {[...design.text].map((char, index) => (
-                      <Button
-                        key={index}
-                        variant={safeSelected === index ? "default" : "ghost"}
-                        size="icon-sm"
-                        aria-label={`${t("selection")} ${char} ${index + 1}`}
-                        onClick={() => setSelected(index)}
-                      >
-                        {char === " " ? "·" : char}
-                      </Button>
-                    ))}
-                  </div>
-                  {design.text[safeSelected] && (
-                    <div className="alternates">
-                      {[0, 1, 2, 3]
-                        .map((i) => alternateBase + i)
-                        .map((v) => (
-                          <button
-                            key={v}
-                            className={`alternate ${(design.alternates[safeSelected] ?? 0) === v ? "active" : ""}`}
-                            aria-label={`${t("alternate")} ${v + 1}`}
-                            aria-pressed={
-                              (design.alternates[safeSelected] ?? 0) === v
-                            }
-                            onClick={() =>
-                              edit({
-                                alternates: {
-                                  ...design.alternates,
-                                  [safeSelected]: v,
-                                },
-                              })
-                            }
-                          >
-                            <Lettering
-                              design={{
-                                ...design,
-                                text: design.text[safeSelected],
-                                alternates: { 0: v },
-                              }}
-                              singleIndex={0}
-                            />
-                            <span>{String(v + 1).padStart(2, "0")}</span>
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </>
-        )}
+      <ScrollShadow className="panel-scroll" label={t("settings")}>
         <InkPicker />
-      </div>
-      <div className="panel-note">
-        <span className="status-dot" />
-        {t("saved")}
-      </div>
+        <AnimatePresence initial={false}>
+          {view === "3d" && (
+            <m.div
+              key="render"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.28 }}
+              className="render-properties-motion"
+            >
+              <RenderProperties />
+            </m.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence mode="wait" initial={false}>
+          <m.div
+            key={mode}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={{ duration: 0.18 }}
+          >
+            {mode === "shapes" ? (
+              <ShapeProperties />
+            ) : (
+              <>
+                <section className="panel-section text-section">
+                  <label htmlFor="word-input">{t("text")}</label>
+                  <Input
+                    id="word-input"
+                    value={design.text}
+                    onChange={(e) => {
+                      const text = normalizeText(e.target.value);
+                      edit({ text });
+                      if (selected >= text.length)
+                        setSelected(Math.max(0, text.length - 1));
+                    }}
+                    maxLength={36}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="PLINKA"
+                  />
+                </section>
+                <section className="panel-section">
+                  <h3>
+                    {t("family")}
+                    <span className="count"> {FAMILIES.length}</span>
+                  </h3>
+                  <ScrollShadow className="families" label={t("family")}>
+                    {FAMILIES.map((family) => (
+                      <button
+                        key={family}
+                        className={`family ${family === design.family ? "active" : ""}`}
+                        aria-pressed={family === design.family}
+                        onClick={() =>
+                          edit({ ...PRESETS[family], alternates: {} })
+                        }
+                      >
+                        <Lettering
+                          design={{
+                            ...design,
+                            ...PRESETS[family],
+                            text: "PA",
+                            alternates: {},
+                          }}
+                        />
+                        <span>{t(family)}</span>
+                      </button>
+                    ))}
+                  </ScrollShadow>
+                </section>
+                <Accordion
+                  className="properties-accordion"
+                  multiple
+                  defaultValue={["geometry", "letter"]}
+                >
+                  <AccordionItem value="geometry">
+                    <AccordionTrigger>{t("geometry")}</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="geometry-fields">
+                        {(Object.keys(LIMITS) as GeometryKey[]).map((key) => (
+                          <RangeField
+                            key={key}
+                            label={t(key)}
+                            value={design[key]}
+                            min={LIMITS[key][0]}
+                            max={LIMITS[key][1]}
+                            initial={PRESETS[design.family][key] as number}
+                            unit={
+                              key === "slant"
+                                ? "°"
+                                : key === "roundness" || key === "cutouts"
+                                  ? "%"
+                                  : ""
+                            }
+                            onChange={(value) => change(key, value)}
+                          />
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="letter">
+                    <AccordionTrigger>{t("selectedLetter")}</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="letter-variant-header">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={t("newDrawing")}
+                          onClick={() =>
+                            edit({
+                              alternates: {
+                                ...design.alternates,
+                                [safeSelected]: alternateBase + 4,
+                              },
+                            })
+                          }
+                        >
+                          <Dice5 />
+                          {t("newDrawing")}
+                        </Button>
+                      </div>
+                      <div className="letter-strip">
+                        {[...design.text].map((char, index) => (
+                          <Button
+                            key={index}
+                            variant={
+                              safeSelected === index ? "default" : "ghost"
+                            }
+                            size="icon-sm"
+                            aria-label={`${t("selection")} ${char} ${index + 1}`}
+                            onClick={() => {
+                              setSelected(index);
+                              setMode("symbol");
+                            }}
+                          >
+                            {char === " " ? "·" : char}
+                          </Button>
+                        ))}
+                      </div>
+                      {design.text[safeSelected] && (
+                        <div className="alternates">
+                          {[0, 1, 2, 3]
+                            .map((i) => alternateBase + i)
+                            .map((v) => (
+                              <button
+                                key={v}
+                                className={`alternate ${(design.alternates[safeSelected] ?? 0) === v ? "active" : ""}`}
+                                aria-label={`${t("alternate")} ${v + 1}`}
+                                aria-pressed={
+                                  (design.alternates[safeSelected] ?? 0) === v
+                                }
+                                onClick={() =>
+                                  edit({
+                                    alternates: {
+                                      ...design.alternates,
+                                      [safeSelected]: v,
+                                    },
+                                  })
+                                }
+                              >
+                                <Lettering
+                                  design={{
+                                    ...design,
+                                    text: design.text[safeSelected],
+                                    alternates: { 0: v },
+                                  }}
+                                  singleIndex={0}
+                                />
+                                <span>{String(v + 1).padStart(2, "0")}</span>
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </>
+            )}
+          </m.div>
+        </AnimatePresence>
+      </ScrollShadow>
     </aside>
   );
 }

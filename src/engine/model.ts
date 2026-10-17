@@ -43,6 +43,11 @@ export const SHAPE_KINDS = [
   "arrow",
 ] as const;
 export type ShapeKind = (typeof SHAPE_KINDS)[number];
+export interface GradientFill {
+  type: "linear" | "radial";
+  angle: number;
+  stops: { id: string; color: string; position: number }[];
+}
 export interface Shape {
   id: string;
   kind: ShapeKind;
@@ -115,6 +120,7 @@ export interface Design {
   cutouts: number;
   seed: number;
   color: string;
+  gradient?: GradientFill | null;
   alternates: Record<string, number>;
   shapes: Shape[];
   mutation: number;
@@ -373,6 +379,36 @@ export function validateDesign(raw: unknown): Design {
   result.seed = Math.round(finite(v.seed, 17, 0, 999999));
   if (typeof v.color === "string" && /^(auto|#[\da-f]{6})$/i.test(v.color))
     result.color = v.color;
+  if (v.gradient && typeof v.gradient === "object") {
+    const g = v.gradient as Record<string, unknown>;
+    if (
+      (g.type === "linear" || g.type === "radial") &&
+      Array.isArray(g.stops)
+    ) {
+      const stops = g.stops
+        .slice(0, 32)
+        .flatMap((raw, index) => {
+          if (!raw || typeof raw !== "object") return [];
+          const s = raw as Record<string, unknown>;
+          return typeof s.color === "string" && /^#[\da-f]{6}$/i.test(s.color)
+            ? [
+                {
+                  id: `stop-${index}`,
+                  color: s.color,
+                  position: finite(s.position, 0, 0, 1),
+                },
+              ]
+            : [];
+        })
+        .sort((a, b) => a.position - b.position);
+      if (stops.length >= 2)
+        result.gradient = {
+          type: g.type,
+          angle: finite(g.angle, 90, 0, 360),
+          stops,
+        };
+    }
+  }
   if (v.alternates && typeof v.alternates === "object") {
     for (const [key, n] of Object.entries(v.alternates))
       if (/^\d{1,2}$/.test(key))

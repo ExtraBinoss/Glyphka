@@ -22,7 +22,8 @@ Lettering
   A-Z, digits and . - +. Sixteen visual families. Continuous mutation,
   weight, rounding, width, slant, spacing and transparent cutouts.
   The die generates another direction. Each letter has further drawings
-  through the More drawings control.
+  through the More drawings control. Clicking a letter opens its symbol.
+  Other directions expands on request and stays collapsed initially.
 
 Shapes
   Twenty-two starting forms, including superforms, rosettes, organic curves,
@@ -33,12 +34,20 @@ Shapes
   Arrow keys move the selected part; Shift increases the step; Delete removes.
 
 3D
-  Switch between 2D and 3D for lettering, symbols or compositions.
+  The cube button in the properties header enables the 3D renderer for
+  the current lettering, symbol or composition.
   Drag to orbit, scroll to zoom. Adjust extrusion, bevel, rotation, material,
   side color, outline, lighting, shadows and background in the render panel.
   Boolean contour operations preserve vector cutouts in the actual mesh.
   Geometry is generated in a worker. Rendering sleeps while the scene is
   still and stops when the tab is hidden. The 3D module loads on demand.
+
+Color
+  Solid fills and editable linear/radial gradients. Drag, add or remove
+  stops with the Amplo shadcn gradient picker. Live paint updates the SVG
+  and GPU materials without rebuilding geometry. A gesture commits once
+  to history; storage writes remain debounced. Gradients persist locally
+  and are included in standalone SVG, 2D PNG and 3D PNG exports.
 
 Exports
   Standalone SVG paths and masks without fonts. Transparent 2D PNG at 2x.

@@ -6,6 +6,7 @@ import { designAtom, selectedGlyphAtom } from "@/state/studio";
 import { Lettering } from "./Drawing";
 import { Preferences } from "./Preferences";
 import s from "@/styles/about.module.css";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function About() {
   const { t } = useTranslation(),
@@ -18,6 +19,7 @@ export function About() {
       aria-label={t("about")}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
     >
       <div className={s.content}>
@@ -27,34 +29,48 @@ export function About() {
         </section>
         <footer className={s.footer}>
           <div className={s.links}>
-            <a
-              href="https://github.com/ExtraBinoss/Glyphka"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="GitHub"
-            >
-              <img
-                className={s.github}
-                src="/github.svg"
-                alt=""
-                width="22"
-                height="22"
-              />
-            </a>
-            <a
-              href="https://plinka.eu"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Plinka"
-            >
-              <img
-                src="/plinka.svg"
-                alt=""
-                width="28"
-                height="28"
-                decoding="async"
-              />
-            </a>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <a
+                    href="https://github.com/ExtraBinoss/Glyphka"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="GitHub"
+                  />
+                }
+              >
+                <img
+                  className={s.github}
+                  src="/github.svg"
+                  alt=""
+                  width="22"
+                  height="22"
+                />
+              </TooltipTrigger>
+              <TooltipContent>GitHub</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <a
+                    href="https://plinka.eu"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Plinka"
+                  />
+                }
+              >
+                <img
+                  src="/plinka.svg"
+                  alt=""
+                  width="28"
+                  height="28"
+                  decoding="async"
+                />
+              </TooltipTrigger>
+              <TooltipContent>Plinka</TooltipContent>
+            </Tooltip>
           </div>
           <a
             className={s.credits}

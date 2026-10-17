@@ -88,7 +88,7 @@ test("extrudes actual geometry, orbits it and exports a nonempty 3D PNG", async 
   await page.goto("/");
   await page.getByRole("button", { name: "Rendu 3D", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "3D", exact: true }),
+    page.getByRole("button", { name: "Rendu 3D", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   const scene = page.getByTestId("three-scene");
   await expect(scene).toHaveAttribute("data-ready", "true", { timeout: 30000 });
@@ -142,7 +142,7 @@ test("extrudes actual geometry, orbits it and exports a nonempty 3D PNG", async 
   }, png.toString("base64"));
   expect(coloredPixels).toBeGreaterThan(10000);
   expect(errors).toEqual([]);
-  await page.getByRole("button", { name: "2D", exact: true }).click();
+  await page.getByRole("button", { name: "Rendu 3D", exact: true }).click();
   await expect(
     page.getByRole("img", { name: "PLINKA", exact: true }),
   ).toBeVisible();

@@ -1,5 +1,6 @@
 import type { Design, Shape } from "./model";
 import { proceduralPath } from "./procedural";
+import { paintSvg } from "./paint";
 
 export interface Mark {
   d: string;
@@ -402,16 +403,18 @@ export function serializeSvg(
   selected = 0,
 ) {
   if (!/^#[\da-f]{6}$/i.test(ink)) throw new Error("Invalid ink");
+  const paint = design.gradient ? "#ffffff" : ink;
   if (mode === "shapes") {
     const p = (s: Shape, color: string) =>
       `<path d="${shapePath(s, design.weight)}" transform="translate(${s.x} ${s.y}) rotate(${s.rotation})" fill="${color}" fill-rule="evenodd"/>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 440" width="1200" height="880" role="img"><title>${escapeXml(design.text || "Symbol")}</title><defs><mask id="cuts" maskUnits="userSpaceOnUse" x="0" y="0" width="600" height="440"><rect width="600" height="440" fill="white"/>${design.shapes
+    const content = `<defs><mask id="cuts" maskUnits="userSpaceOnUse" x="0" y="0" width="600" height="440"><rect width="600" height="440" fill="white"/>${design.shapes
       .filter((s) => s.cutout)
       .map((s) => p(s, "black"))
       .join("")}</mask></defs><g mask="url(#cuts)">${design.shapes
       .filter((s) => !s.cutout)
-      .map((s) => p(s, ink))
-      .join("")}</g></svg>`;
+      .map((s) => p(s, paint))
+      .join("")}</g>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 440" width="1200" height="880" role="img"><title>${escapeXml(design.text || "Symbol")}</title>${paintSvg(content, design.gradient, 600, 440)}</svg>`;
   }
   const drawing = buildDrawing(
     design,
@@ -424,12 +427,12 @@ export function serializeSvg(
       const mask = cuts.length
         ? `<defs><mask id="cut-${i}" maskUnits="userSpaceOnUse" x="-50" y="-50" width="200" height="200"><rect x="-50" y="-50" width="200" height="200" fill="white"/>${cuts.map((m) => markSvg(m, "black", design.roundness)).join("")}</mask></defs>`
         : "";
-      return `<g transform="${glyph.transform}">${mask}<g${cuts.length ? ` mask="url(#cut-${i})"` : ""}>${positive.map((m) => markSvg(m, ink, design.roundness)).join("")}</g></g>`;
+      return `<g transform="${glyph.transform}">${mask}<g${cuts.length ? ` mask="url(#cut-${i})"` : ""}>${positive.map((m) => markSvg(m, paint, design.roundness)).join("")}</g></g>`;
     })
     .join("");
   const width = 1200,
     height = Math.round((width * drawing.height) / drawing.width);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${drawing.width} ${drawing.height}" width="${width}" height="${height}" role="img"><title>${escapeXml(design.text || "Wordmark")}</title>${groups}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${drawing.width} ${drawing.height}" width="${width}" height="${height}" role="img"><title>${escapeXml(design.text || "Wordmark")}</title>${paintSvg(groups, design.gradient, drawing.width, drawing.height)}</svg>`;
 }
 
 function distortPath(
