@@ -13,7 +13,8 @@ test("serves the visible studio and complete metadata without JavaScript", async
   try {
     const page = await context.newPage();
     await page.goto("http://127.0.0.1:8402/");
-    await expect(page).toHaveTitle("Glyphka — Crée ton langage graphique");
+    await expect(page).toHaveTitle(getSiteMeta("en").title);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(
       page.getByRole("heading", { name: "Glyphka", exact: true }),
     ).toBeVisible();
@@ -55,7 +56,7 @@ test("serves the visible studio and complete metadata without JavaScript", async
     );
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       "content",
-      getSiteMeta("fr").description,
+      getSiteMeta("en").description,
     );
     await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
       "content",
@@ -157,7 +158,7 @@ test("hydrates the existing SVG before restoring saved preferences without rewri
   expect(errors).toEqual([]);
 });
 
-test("keeps social metadata and structured descriptions in sync in both languages", async ({
+test("keeps social previews English while localizing interface metadata and structured descriptions", async ({
   page,
 }) => {
   await page.goto("/");
@@ -168,20 +169,32 @@ test("keeps social metadata and structured descriptions in sync in both language
   ] as const) {
     await page.getByRole("button", { name: label, exact: true }).click();
     const meta = getSiteMeta(language);
+    const social = getSiteMeta("en");
     await expect(page).toHaveTitle(meta.title);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      meta.description,
+    );
     for (const selector of [
-      'meta[name="description"]',
       'meta[property="og:description"]',
       'meta[name="twitter:description"]',
     ])
       await expect(page.locator(selector)).toHaveAttribute(
         "content",
-        meta.description,
+        social.description,
       );
     await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute(
       "content",
-      meta.locale,
+      social.locale,
     );
+    for (const selector of [
+      'meta[property="og:title"]',
+      'meta[name="twitter:title"]',
+    ])
+      await expect(page.locator(selector)).toHaveAttribute(
+        "content",
+        social.title,
+      );
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
       SITE_URL,

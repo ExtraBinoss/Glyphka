@@ -20,7 +20,7 @@ const html = template
     "</head>",
     `<script type="application/ld+json">${jsonLd}</script></head>`,
   );
-const expected = getSiteMeta("fr");
+const expected = getSiteMeta("en");
 if (!html.includes(expected.title) || !html.includes(SITE_URL))
   throw new Error("The public metadata and prerender configuration differ.");
 await writeFile("dist/index.html", html);

@@ -40,7 +40,7 @@ export const structuredData = {
       "@id": `${SITE_URL}#app`,
       name: "Glyphka",
       url: SITE_URL,
-      description: descriptions.fr.description,
+      description: descriptions.en.description,
       applicationCategory: "DesignApplication",
       operatingSystem: "Any",
       browserRequirements: "Requires JavaScript. WebGL is optional for 3D.",
@@ -81,23 +81,21 @@ export function getStructuredData(language: string) {
 
 export function updateSiteMeta(language: string) {
   const meta = getSiteMeta(language);
+  const social = descriptions.en;
   document.documentElement.lang = language.startsWith("fr") ? "fr" : "en";
   document.title = meta.title;
   const schema = document.querySelector('script[type="application/ld+json"]');
   if (schema) schema.textContent = JSON.stringify(getStructuredData(language));
   const values: [string, string][] = [
     ['meta[name="description"]', meta.description],
-    ['meta[property="og:title"]', meta.title],
-    ['meta[property="og:description"]', meta.description],
-    ['meta[property="og:locale"]', meta.locale],
-    [
-      'meta[property="og:locale:alternate"]',
-      meta.locale === "fr_FR" ? "en_US" : "fr_FR",
-    ],
-    ['meta[property="og:image:alt"]', meta.imageAlt],
-    ['meta[name="twitter:title"]', meta.title],
-    ['meta[name="twitter:description"]', meta.description],
-    ['meta[name="twitter:image:alt"]', meta.imageAlt],
+    ['meta[property="og:title"]', social.title],
+    ['meta[property="og:description"]', social.description],
+    ['meta[property="og:locale"]', social.locale],
+    ['meta[property="og:locale:alternate"]', "fr_FR"],
+    ['meta[property="og:image:alt"]', social.imageAlt],
+    ['meta[name="twitter:title"]', social.title],
+    ['meta[name="twitter:description"]', social.description],
+    ['meta[name="twitter:image:alt"]', social.imageAlt],
   ];
   for (const [selector, content] of values)
     document.querySelector(selector)?.setAttribute("content", content);

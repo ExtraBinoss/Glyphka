@@ -532,7 +532,7 @@ void i18n
       fr: { translation: translations.fr },
       en: { translation: translations.en },
     },
-    lng: "fr",
+    lng: "en",
     initAsync: false,
     fallbackLng: "en",
     interpolation: { escapeValue: false },
