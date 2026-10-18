@@ -16,71 +16,88 @@ import { ColorPicker, ColorPickerPanel } from "./ui/color-picker";
 import { Button } from "./ui/button";
 import { PreferenceGroup } from "./PreferenceGroup";
 import { RangeField } from "./RangeField";
+import { ControlHint } from "./ControlHint";
+import { useColorPickerI18n } from "./useColorPickerI18n";
 
 function Controls() {
   const { t } = useTranslation(),
-    ctx = useGradientPickerContext();
+    ctx = useGradientPickerContext(),
+    pickerI18n = useColorPickerI18n();
   const stop = ctx.selectedStop;
   return (
     <>
-      <PreferenceGroup
-        label={t("gradientType")}
-        value={ctx.gradient.type}
-        options={[
-          { value: "linear", label: t("linear") },
-          { value: "radial", label: t("radial") },
-        ]}
-        onChange={(value) => ctx.setType(value as "linear" | "radial")}
-      />
-      <GradientPickerContext.Provider
-        value={{
-          ...ctx,
-          removeStop: (id) => {
-            if (ctx.stops.length > 2) ctx.removeStop(id);
-          },
-          addStop: (position, color) =>
-            ctx.stops.length < 32
-              ? ctx.addStop(position, color)
-              : ctx.selectedStopId,
-        }}
-      >
-        <Bar height={22} handleSize={18} aria-label={t("gradientStops")} />
-      </GradientPickerContext.Provider>
-      <div className="gradient-stop-actions">
-        <span>
-          {ctx.stops.length} {t("stops")}
-        </span>
+      <div className="gradient-type">
+        <PreferenceGroup
+          label={t("gradientType")}
+          value={ctx.gradient.type}
+          options={[
+            { value: "linear", label: t("linear") },
+            { value: "radial", label: t("radial") },
+          ]}
+          onChange={(value) => ctx.setType(value as "linear" | "radial")}
+        />
+      </div>
+      <section className="gradient-stops" aria-label={t("gradientStops")}>
+        <div className="gradient-section-heading">
+          <span>{t("gradientStops")}</span>
+          <span>{ctx.stops.length}</span>
+        </div>
+        <GradientPickerContext.Provider
+          value={{
+            ...ctx,
+            removeStop: (id) => {
+              if (ctx.stops.length > 2) ctx.removeStop(id);
+            },
+            addStop: (position, color) =>
+              ctx.stops.length < 32
+                ? ctx.addStop(position, color)
+                : ctx.selectedStopId,
+          }}
+        >
+          <Bar height={28} handleSize={18} aria-label={t("gradientStops")} />
+        </GradientPickerContext.Provider>
         <Button
-          variant="ghost"
-          size="icon-xs"
+          variant="outline"
+          size="sm"
+          className="gradient-add-stop"
           aria-label={t("addStop")}
           disabled={ctx.stops.length >= 32}
           onClick={() => ctx.selectStop(ctx.addStop(0.5))}
         >
           <Plus />
+          {t("addStop")}
         </Button>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label={t("removeStop")}
-          disabled={ctx.stops.length <= 2}
-          onClick={() => ctx.removeStop(ctx.selectedStopId)}
-        >
-          <Trash2 />
-        </Button>
-      </div>
-      {ctx.gradient.type === "linear" && (
+      </section>
+      <div className="gradient-angle">
         <RangeField
           label={t("angle")}
-          value={ctx.gradient.angle}
+          value={ctx.gradient.type === "linear" ? ctx.gradient.angle : 0}
           min={0}
           max={360}
           unit="°"
           onChange={ctx.setAngle}
+          disabled={ctx.gradient.type !== "linear"}
         />
-      )}
+      </div>
       {stop && (
-        <>
+        <section className="gradient-stop-editor" aria-label={t("stopColor")}>
+          <div className="gradient-section-heading">
+            <span className="gradient-selected-stop">
+              <i style={{ backgroundColor: formatColor(stop.color, "hex") }} />
+              {t("stopColor")}
+            </span>
+            <ControlHint label={t("removeStop")}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("removeStop")}
+                disabled={ctx.stops.length <= 2}
+                onClick={() => ctx.removeStop(ctx.selectedStopId)}
+              >
+                <Trash2 />
+              </Button>
+            </ControlHint>
+          </div>
           <RangeField
             label={t("stopPosition")}
             value={stop.position * 100}
@@ -93,6 +110,7 @@ function Controls() {
             value={formatColor(stop.color, "hex")}
             format="hex"
             alpha={false}
+            i18n={pickerI18n}
             onValueChange={(color) => {
               const parsed = color && parseColor(color);
               if (parsed) ctx.setStopColor(stop.id, parsed);
@@ -100,7 +118,7 @@ function Controls() {
           >
             <ColorPickerPanel />
           </ColorPicker>
-        </>
+        </section>
       )}
     </>
   );

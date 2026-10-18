@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1200, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Glyphka — Social card</title>
+    <style>
+      @font-face {
+        font-family: "Space Grotesk";
+        src: url("./assets/heading.woff2") format("woff2");
+        font-weight: 300 700;
+      }
+      @font-face {
+        font-family: "Source Sans 3";
+        src: url("./assets/body.woff2") format("woff2");
+        font-weight: 200 900;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      body {
+        padding: 26px;
+        background:
+          radial-gradient(ellipse at 0% 100%, #dce5ff 0%, transparent 60%),
+          radial-gradient(ellipse at 100% 0%, #d4e2ff 0%, transparent 65%),
+          #f0eff3;
+        color: #17213c;
+        font-family: "Source Sans 3", sans-serif;
+      }
+      .card {
+        position: relative;
+        height: 100%;
+        overflow: hidden;
+        border: 1px solid rgb(255 255 255 / 90%);
+        border-radius: 30px;
+        background: rgb(255 255 255 / 80%);
+        box-shadow: 0 16px 50px -28px rgb(43 52 82 / 25%);
+      }
+      header {
+        position: absolute;
+        inset: 32px 42px auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: #7e8597;
+        font-size: 19px;
+      }
+      .wordmark {
+        width: 170px;
+        height: 34px;
+        object-fit: contain;
+        color: #17213c;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 27px;
+        font-weight: 600;
+        letter-spacing: -1.5px;
+      }
+      .copy {
+        position: absolute;
+        left: 500px;
+        top: 164px;
+      }
+      h1 {
+        margin: 0 0 22px;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 98px;
+        line-height: 1;
+        font-weight: 600;
+        letter-spacing: -7px;
+      }
+      h1 span {
+        color: #2563eb;
+      }
+      .tagline {
+        margin: 0;
+        color: #5f687d;
+        font-size: 29px;
+        line-height: 1.28;
+        font-weight: 400;
+        letter-spacing: -0.5px;
+      }
+      .tagline strong {
+        color: #17213c;
+        font-weight: 500;
+      }
+      .features {
+        margin-top: 28px;
+        margin: 0;
+        color: #8a91a1;
+        font-size: 18px;
+      }
+      .features span {
+        padding: 0 11px;
+        color: #bac0cc;
+      }
+      footer {
+        position: absolute;
+        inset: auto 42px 29px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        color: #9197a6;
+        font-size: 17px;
+      }
+      .url {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #2563eb;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .letter-playground {
+        position: absolute;
+        left: 32px;
+        top: 115px;
+        width: 430px;
+        height: 390px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 1px;
+        align-items: center;
+        justify-items: center;
+      }
+      .letter-playground img {
+        width: 144px;
+        height: 144px;
+        object-fit: contain;
+      }
+      .letter-playground img:nth-child(1) {
+        transform: rotate(-9deg);
+      }
+      .letter-playground img:nth-child(2) {
+        transform: rotate(8deg) translateY(-6px);
+      }
+      .letter-playground img:nth-child(3) {
+        transform: rotate(12deg);
+      }
+      .letter-playground img:nth-child(4) {
+        transform: rotate(8deg);
+      }
+      .letter-playground img:nth-child(5) {
+        transform: rotate(-8deg);
+      }
+      .letter-playground img:nth-child(6) {
+        transform: rotate(8deg);
+      }
+      .letter-playground img:nth-child(7) {
+        transform: rotate(-6deg);
+      }
+      .letter-playground img:nth-child(8) {
+        transform: rotate(12deg);
+      }
+      .letter-playground img:nth-child(9) {
+        transform: rotate(-7deg);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <header>
+        <img
+          class="wordmark"
+          src="./assets/wordmark.svg"
+          alt="Glyphka"
+          width="170"
+          height="34"
+        />
+      </header>
+      <div class="letter-playground" aria-label="Letters to explore">
+        <img src="./assets/play-a.svg" alt="Signal A" />
+        <img src="./assets/play-r.svg" alt="Ribbon R" />
+        <img src="./assets/play-o.svg" alt="Orbital O" />
+        <img src="./assets/play-p.svg" alt="Stencil P" />
+        <img src="./assets/play-k.svg" alt="Modular K" />
+        <img src="./assets/play-s.svg" alt="Soft S" />
+        <img src="./assets/play-t.svg" alt="Circuit T" />
+        <img src="./assets/play-x.svg" alt="Fracture X" />
+        <img src="./assets/play-b.svg" alt="Duplex B" />
+      </div>
+      <section class="copy">
+        <h1>Try it<span>!</span></h1>
+        <p class="tagline">
+          Shape your own language.<br /><strong>Make your mark.</strong>
+        </p>
+        <p class="features">
+          Lettering<span>·</span>Symbols<span>·</span>3D<span>·</span>SVG
+        </p>
+      </section>
+      <footer>
+        <div class="url">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20" />
+          </svg>
+          glyphka.plinka.eu
+        </div>
+      </footer>
+    </main>
+    <script>
+      window.beamComposition = { seek() {} };
+    </script>
+  </body>
+</html>

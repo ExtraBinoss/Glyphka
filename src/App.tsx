@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { AnimatePresence, m } from "motion/react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowDownToLine,
@@ -15,13 +15,15 @@ import {
   Plus,
   Redo2,
   Shapes,
-  SlidersHorizontal,
   Dice5,
+  Ellipsis,
   Type,
   Undo2,
   X,
 } from "lucide-react";
 import { About } from "@/components/About";
+import { BrandWord } from "@/components/BrandWord";
+import { ResponsiveInspector } from "@/components/ResponsiveInspector";
 import { serializeSvg } from "@/engine/geometry";
 import { randomizeDesign } from "@/engine/randomize";
 import {
@@ -32,6 +34,9 @@ import {
   editAtom,
   endGestureAtom,
   commitPaintAtom,
+  commitRenderAtom,
+  commitGeometryAtom,
+  commitShapeAtom,
   guidesAtom,
   modeAtom,
   redoAtom,
@@ -58,29 +63,55 @@ import { PresetControls } from "@/components/PresetControls";
 import { PreferenceGroup } from "@/components/PreferenceGroup";
 import { preloadThree } from "@/lib/preload-three";
 
-import { RangeField } from "@/components/RangeField";
 import { download, exportPng } from "@/lib/export";
 import { useThemeSync } from "@/state/theme";
+import { useStudioNavigation } from "@/lib/use-studio-navigation";
 
 function Navigation() {
   const { t } = useTranslation(),
     [mode, setMode] = useAtom(modeAtom),
-    [expanded, setExpanded] = useState(false);
+    [expanded, setExpanded] = useState(false),
+    reduced = useReducedMotion();
   return (
     <m.nav
       className="rail glass"
       aria-label={t("view")}
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
-      onFocusCapture={() => setExpanded(true)}
+      onPointerEnter={(event) => {
+        if (
+          event.pointerType !== "touch" &&
+          matchMedia("(min-width: 901px)").matches
+        )
+          setExpanded(true);
+      }}
+      onPointerLeave={() => setExpanded(false)}
+      onFocusCapture={() => {
+        if (matchMedia("(min-width: 901px)").matches) setExpanded(true);
+      }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget))
           setExpanded(false);
       }}
+      initial={false}
       layout="size"
-      style={{ width: expanded ? 158 : 58 }}
-      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+      style={{ width: expanded ? 158 : 58, y: "-50%", originX: 0 }}
+      data-expanded={expanded}
+      transition={{ duration: reduced ? 0 : 0.26, ease: [0.22, 1, 0.36, 1] }}
     >
+      <m.span
+        className="rail-indicator"
+        aria-hidden="true"
+        initial={false}
+        animate={{
+          "--nav-position": ["wordmark", "symbol", "shapes", "about"].indexOf(
+            mode,
+          ),
+        }}
+        transition={
+          reduced
+            ? { duration: 0 }
+            : { type: "spring", stiffness: 400, damping: 32 }
+        }
+      />
       {(
         [
           ["wordmark", Type],
@@ -95,19 +126,23 @@ function Navigation() {
           aria-label={t(id)}
           aria-current={mode === id ? "page" : undefined}
           className={`rail-item ${mode === id ? "active" : ""}`}
+          onTap={(event) => {
+            if ("pointerType" in event && event.pointerType === "touch")
+              setMode(id);
+          }}
           onClick={() => setMode(id)}
         >
-          {mode === id && (
-            <m.span
-              className="rail-indicator"
-              layoutId="rail-selection"
-              transition={{ type: "spring", stiffness: 400, damping: 32 }}
-            />
-          )}
           <Icon size={21} />
           <m.span
             className="rail-label"
-            animate={{ opacity: expanded ? 1 : 0 }}
+            style={{ visibility: expanded ? "visible" : "hidden" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: expanded ? 1 : 0, x: expanded ? 0 : -4 }}
+            transition={{
+              duration: reduced ? 0 : expanded ? 0.14 : 0.07,
+              delay: expanded && !reduced ? 0.065 : 0,
+            }}
+            aria-hidden="true"
           >
             {t(id)}
           </m.span>
@@ -169,6 +204,7 @@ function ExportControls({ notify }: { notify: (message: string) => void }) {
     <div className="exports">
       <ButtonGroup>
         <Button
+          className="export-primary"
           onClick={view === "3d" ? () => void png() : svg}
           size="sm"
           disabled={busy || (view === "3d" && !api)}
@@ -183,7 +219,9 @@ function ExportControls({ notify }: { notify: (message: string) => void }) {
               className="export-menu"
               aria-label={t("download")}
             >
-              <ChevronDown />
+              <ChevronDown className="export-chevron" />
+              <ArrowDownToLine className="export-mobile-icon" />
+              <span className="export-mobile-label">{t("download")}</span>
             </PopoverTrigger>
           </ControlHint>
           <PopoverContent
@@ -192,12 +230,13 @@ function ExportControls({ notify }: { notify: (message: string) => void }) {
             className="export-popover bg-popover/80 backdrop-blur-xl"
           >
             <PopoverTitle>{t("download")}</PopoverTitle>
-            <Button variant="ghost" onClick={svg}>
+            <Button variant="ghost" aria-label="SVG" onClick={svg}>
               <ArrowDownToLine />
-              SVG<span className="muted">Vector</span>
+              SVG<span className="muted">{t("vector")}</span>
             </Button>
             <Button
               variant="ghost"
+              aria-label="PNG"
               onClick={() => void png()}
               disabled={busy || (view === "3d" && !api)}
             >
@@ -227,115 +266,158 @@ function Toolbar() {
     [view, setView] = useAtom(viewAtom);
   return (
     <div className="canvas-toolbar glass">
-      <div
-        className="toolbar-view"
-        onPointerOver={(event) => {
-          if (
-            event.target instanceof Element &&
-            event.target.closest('button[aria-label="3D"]')
-          )
-            preloadThree();
-        }}
-        onFocus={(event) => {
-          if (event.target.getAttribute("aria-label") === "3D") preloadThree();
-        }}
-      >
-        <PreferenceGroup
-          label={t("view")}
-          value={view}
-          options={[
-            { value: "2d", label: "2D" },
-            { value: "3d", label: "3D" },
-          ]}
-          onChange={(value) => setView(value as "2d" | "3d")}
-        />
+      <div className="toolbar-primary">
+        <div
+          className="toolbar-view"
+          onPointerOver={(event) => {
+            if (
+              event.target instanceof Element &&
+              event.target.closest('button[aria-label="3D"]')
+            )
+              preloadThree();
+          }}
+          onFocus={(event) => {
+            if (event.target.getAttribute("aria-label") === "3D")
+              preloadThree();
+          }}
+        >
+          <PreferenceGroup
+            label={t("view")}
+            value={view}
+            options={[
+              { value: "2d", label: "2D" },
+              { value: "3d", label: "3D" },
+            ]}
+            onChange={(value) => setView(value as "2d" | "3d")}
+          />
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          disabled={!canUndo}
+          aria-label={t("undo")}
+          title={`${t("undo")} · ⌘Z`}
+          onClick={() => undo()}
+        >
+          <Undo2 />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          disabled={!canRedo}
+          aria-label={t("redo")}
+          title={`${t("redo")} · ⇧⌘Z`}
+          onClick={() => redo()}
+        >
+          <Redo2 />
+        </Button>
+        <Button
+          className="toolbar-guides"
+          variant={guides ? "secondary" : "ghost"}
+          size="icon-sm"
+          aria-pressed={guides}
+          aria-label={t("guides")}
+          title={t("guides")}
+          onClick={() => setGuides(!guides)}
+        >
+          <Grid2X2 />
+        </Button>
       </div>
-      <span className="toolbar-separator" />
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        disabled={!canUndo}
-        aria-label={t("undo")}
-        title={`${t("undo")} · ⌘Z`}
-        onClick={() => undo()}
-      >
-        <Undo2 />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        disabled={!canRedo}
-        aria-label={t("redo")}
-        title={`${t("redo")} · ⇧⌘Z`}
-        onClick={() => redo()}
-      >
-        <Redo2 />
-      </Button>
-      <span className="toolbar-separator" />
-      <Button
-        variant={guides ? "secondary" : "ghost"}
-        size="icon-sm"
-        aria-pressed={guides}
-        aria-label={t("guides")}
-        title={t("guides")}
-        onClick={() => setGuides(!guides)}
-      >
-        <Grid2X2 />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t("zoomOut")}
-        disabled={zoom <= 25}
-        onClick={() => setZoom(Math.max(25, zoom - 10))}
-      >
-        <Minus />
-      </Button>
+      <div className="toolbar-secondary">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("zoomOut")}
+          disabled={zoom <= 25}
+          onClick={() => setZoom(Math.max(25, zoom - 10))}
+        >
+          <Minus />
+        </Button>
+        <ControlHint label={t("resetZoom")}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="zoom-trigger"
+            aria-label={t("resetZoom")}
+            onClick={() => setZoom(100)}
+          >
+            {zoom}%
+          </Button>
+        </ControlHint>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("zoomIn")}
+          disabled={zoom >= 400}
+          onClick={() => setZoom(Math.min(400, zoom + 10))}
+        >
+          <Plus />
+        </Button>
+        {mode === "shapes" && (
+          <>
+            <span className="toolbar-separator" />
+            <AddShape compact />
+          </>
+        )}
+      </div>
       <Popover>
         <PopoverTrigger
-          render={<Button variant="ghost" size="sm" />}
-          className="zoom-trigger"
-          aria-label={t("zoom")}
+          render={<Button variant="ghost" size="icon-sm" />}
+          className="mobile-toolbar-more"
+          aria-label={t("canvasControls")}
         >
-          {zoom}%
+          <Ellipsis />
         </PopoverTrigger>
         <PopoverContent
           side="top"
-          sideOffset={14}
-          className="zoom-popover bg-popover/80 backdrop-blur-xl"
+          align="start"
+          sideOffset={12}
+          className="canvas-controls-popover bg-popover/95 backdrop-blur-xl"
         >
-          <RangeField
-            label={t("zoom")}
-            value={zoom}
-            min={25}
-            max={400}
-            unit="%"
-            onChange={(value) => {
-              setZoom(value);
-            }}
-          />
+          <PopoverTitle>{t("canvasControls")}</PopoverTitle>
+          <ButtonGroup className="mobile-zoom-group" aria-label={t("zoom")}>
+            <Button
+              variant="outline"
+              aria-label={t("zoomOut")}
+              disabled={zoom <= 25}
+              onClick={() => setZoom(Math.max(25, zoom - 10))}
+            >
+              <Minus />
+            </Button>
+            <Button
+              variant="outline"
+              aria-label={t("resetZoom")}
+              onClick={() => setZoom(100)}
+            >
+              {zoom}%
+            </Button>
+            <Button
+              variant="outline"
+              aria-label={t("zoomIn")}
+              disabled={zoom >= 400}
+              onClick={() => setZoom(Math.min(400, zoom + 10))}
+            >
+              <Plus />
+            </Button>
+          </ButtonGroup>
+          <Button
+            variant={guides ? "secondary" : "ghost"}
+            aria-label={t("guides")}
+            aria-pressed={guides}
+            onClick={() => setGuides(!guides)}
+          >
+            <Grid2X2 />
+            {t("guides")}
+          </Button>
+          {mode === "shapes" && <AddShape />}
         </PopoverContent>
       </Popover>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t("zoomIn")}
-        disabled={zoom >= 400}
-        onClick={() => setZoom(Math.min(400, zoom + 10))}
-      >
-        <Plus />
-      </Button>
-      {mode === "shapes" && (
-        <>
-          <span className="toolbar-separator" />
-          <AddShape compact />
-        </>
-      )}
     </div>
   );
 }
 export function App() {
   useThemeSync();
+  useStudioNavigation();
   const { t } = useTranslation(),
     [mode] = useAtom(modeAtom),
     edit = useSetAtom(editAtom),
@@ -344,10 +426,12 @@ export function App() {
     redo = useSetAtom(redoAtom),
     end = useSetAtom(endGestureAtom),
     commitPaint = useSetAtom(commitPaintAtom),
+    commitRender = useSetAtom(commitRenderAtom),
+    commitGeometry = useSetAtom(commitGeometryAtom),
+    commitShape = useSetAtom(commitShapeAtom),
     view = useAtomValue(viewAtom);
   const [roll, setRoll] = useState(0);
-  const [panelOpen, setPanelOpen] = useState(false),
-    [toast, setToast] = useState("");
+  const [toast, setToast] = useState("");
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 2600);
@@ -356,6 +440,9 @@ export function App() {
   useEffect(() => {
     const finish = () => {
       commitPaint();
+      commitRender();
+      commitGeometry();
+      commitShape();
       end();
     };
     const key = (event: KeyboardEvent) => {
@@ -410,7 +497,6 @@ export function App() {
           }));
         }
       }
-      if (event.key === "Escape") setPanelOpen(false);
     };
     window.addEventListener("keydown", key);
     window.addEventListener("pointerup", finish);
@@ -422,16 +508,25 @@ export function App() {
       window.removeEventListener("pointercancel", finish);
       window.removeEventListener("blur", finish);
     };
-  }, [mode, selectedShape, edit, undo, redo, end, commitPaint]);
+  }, [
+    mode,
+    selectedShape,
+    edit,
+    undo,
+    redo,
+    end,
+    commitPaint,
+    commitRender,
+    commitGeometry,
+    commitShape,
+  ]);
   return (
-    <div
-      className={`studio mode-${mode} view-${view} ${panelOpen ? "panel-open" : ""}`}
-    >
+    <div className={`studio mode-${mode} view-${view}`}>
       <Navigation />
       <header className="studio-header">
-        <span className="word-logo" aria-label="Glyphka">
-          glyphka<span>.</span>
-        </span>
+        <h1 className="word-logo" aria-label="Glyphka">
+          <BrandWord />
+        </h1>
       </header>
       {mode !== "about" && (
         <div className="top-actions">
@@ -457,18 +552,9 @@ export function App() {
           </Button>
           <PresetControls />
           <ExportControls notify={setToast} />
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="mobile-properties"
-            aria-label={t("settings")}
-            onClick={() => setPanelOpen(!panelOpen)}
-          >
-            <SlidersHorizontal />
-          </Button>
         </div>
       )}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         {mode === "about" ? (
           <About key="about" />
         ) : (
@@ -487,14 +573,13 @@ export function App() {
         )}
       </AnimatePresence>
       {mode !== "about" && (
-        <>
-          <button
-            className="panel-scrim"
-            aria-label={t("close")}
-            onClick={() => setPanelOpen(false)}
-          />
-          <Properties onClose={() => setPanelOpen(false)} />
-        </>
+        <ResponsiveInspector
+          title={t("settings")}
+          closeLabel={t("close")}
+          breakpoint={900}
+        >
+          <Properties />
+        </ResponsiveInspector>
       )}
       <AnimatePresence>
         {toast && (

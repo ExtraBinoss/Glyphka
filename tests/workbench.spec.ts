@@ -21,6 +21,21 @@ test("previews a direction without saving or adding history, then commits it on 
   const variant = page.locator(".variation-card").first();
   await variant.hover();
   await expect.poll(geometry).not.toEqual(before);
+  const cards = page.locator(".variation-card");
+  for (let i = 0; i < 3; i++) {
+    await cards.nth(i).hover();
+    const preview = await geometry();
+    const current = (await cards.nth(i).boundingBox())!;
+    const next = (await cards.nth(i + 1).boundingBox())!;
+    // Crossing the empty gap keeps the last preview, even when pausing there.
+    await page.mouse.move(
+      (current.x + current.width + next.x) / 2,
+      current.y + current.height / 2,
+    );
+    await page.waitForTimeout(200);
+    await expect.poll(geometry).toEqual(preview);
+    await expect(page.locator(".variations")).toHaveClass(/expanded/);
+  }
   await expect(
     page.getByRole("button", { name: "Annuler", exact: true }),
   ).toBeDisabled();
@@ -29,6 +44,9 @@ test("previews a direction without saving or adding history, then commits it on 
   ).toBeNull();
   await page.locator(".word-logo").hover();
   await expect.poll(geometry).toEqual(before);
+  await page
+    .getByRole("button", { name: "D’autres directions", exact: false })
+    .hover();
   await variant.click();
   await expect(
     page.getByRole("button", { name: "Annuler", exact: true }),
@@ -46,20 +64,25 @@ test("saves five independent presets across reloads and restores a drawing undoa
     await page
       .getByRole("textbox", { name: "Ton texte", exact: true })
       .fill(`P${i}`);
-    await page.getByRole("button", { name: "Presets", exact: true }).click();
     await page
-      .getByRole("textbox", { name: "Nom du preset", exact: true })
+      .getByRole("button", { name: "Préréglages", exact: true })
+      .click();
+    await page
+      .getByRole("textbox", { name: "Nom du préréglage", exact: true })
       .fill(`Version ${i + 1}`);
     await page
-      .getByRole("button", { name: "Enregistrer le preset", exact: true })
+      .getByRole("button", { name: "Enregistrer le préréglage", exact: true })
       .click();
     await page.keyboard.press("Escape");
   }
   await page.reload();
-  await page.getByRole("button", { name: "Presets", exact: true }).click();
+  await page.getByRole("button", { name: "Préréglages", exact: true }).click();
   await expect(page.locator(".preset-row")).toHaveCount(5);
   await expect(
-    page.getByRole("button", { name: "Enregistrer le preset", exact: true }),
+    page.getByRole("button", {
+      name: "Enregistrer le préréglage",
+      exact: true,
+    }),
   ).toBeDisabled();
   await page
     .getByRole("button", { name: "Charger Version 1", exact: true })
@@ -71,13 +94,16 @@ test("saves five independent presets across reloads and restores a drawing undoa
   await expect(
     page.getByRole("textbox", { name: "Ton texte", exact: true }),
   ).toHaveValue("P4");
-  await page.getByRole("button", { name: "Presets", exact: true }).click();
+  await page.getByRole("button", { name: "Préréglages", exact: true }).click();
   await page
     .getByRole("button", { name: "Supprimer Version 2", exact: true })
     .click();
   await expect(page.locator(".preset-row")).toHaveCount(4);
   await expect(
-    page.getByRole("button", { name: "Enregistrer le preset", exact: true }),
+    page.getByRole("button", {
+      name: "Enregistrer le préréglage",
+      exact: true,
+    }),
   ).toBeEnabled();
 });
 
@@ -91,6 +117,19 @@ test("spotlights letters, returns from a symbol and keeps separate mode zooms", 
   await expect(groups.first()).toHaveCSS("opacity", "0.22");
   await expect(groups.nth(1)).toHaveCSS("opacity", "1");
   await expect(page.locator("main .glyph-underline")).toHaveCount(0);
+  const word = page.locator("main .lettering").first();
+  const bounds = (await word.boundingBox())!;
+  // Leave the letter while staying inside the SVG's top margin.
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 2);
+  await expect
+    .poll(() =>
+      groups.evaluateAll((elements) =>
+        elements.every((element) => getComputedStyle(element).opacity === "1"),
+      ),
+    )
+    .toBe(true);
+  await hits.nth(1).hover();
+  await expect(groups.first()).toHaveCSS("opacity", "0.22");
   await page.getByRole("button", { name: "Zoom avant", exact: true }).click();
   await expect(page.locator(".zoom-trigger")).toHaveText("110%");
   await hits.nth(1).click();

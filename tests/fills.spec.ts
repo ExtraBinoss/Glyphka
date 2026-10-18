@@ -12,6 +12,44 @@ async function openGradient(page: Page) {
   await expect(page.locator('[data-slot="gradient-bar"]')).toBeVisible();
 }
 
+test("keeps gradient controls full width and stable when switching type, with clear stop actions", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await openGradient(page);
+  const editor = page.locator(".gradient-editor");
+  const type = editor.locator('.gradient-type [data-slot="toggle-group"]');
+  const width = (await editor.boundingBox())!.width;
+  expect((await type.boundingBox())!.width).toBeCloseTo(width, 0);
+  const remove = page.getByRole("button", {
+    name: "Supprimer le point",
+    exact: true,
+  });
+  await expect(remove).toBeDisabled();
+  const add = page.getByRole("button", {
+    name: "Ajouter un point",
+    exact: true,
+  });
+  await expect(add).toHaveText("Ajouter un point");
+  await add.click();
+  await expect(remove).toBeEnabled();
+  await remove.click();
+  await expect(remove).toBeDisabled();
+  const angle = editor.getByRole("textbox", {
+    name: "Angle · valeur",
+    exact: true,
+  });
+  await expect(angle.locator("..")).toHaveCSS("border-style", "solid");
+  const picker = editor.locator('[data-slot="color-picker-area"]');
+  const initial = (await picker.boundingBox())!;
+  await type.getByRole("button", { name: "Radial", exact: true }).click();
+  await expect(angle).toBeDisabled();
+  expect((await picker.boundingBox())!.y).toBeCloseTo(initial.y, 0);
+  await type.getByRole("button", { name: "Linéaire", exact: true }).click();
+  await expect(angle).toBeEnabled();
+  expect((await picker.boundingBox())!.y).toBeCloseTo(initial.y, 0);
+});
+
 test("keeps the canvas quiet, reveals variations and opens a clicked letter as a symbol", async ({
   page,
 }) => {
@@ -22,9 +60,9 @@ test("keeps the canvas quiet, reveals variations and opens a clicked letter as a
     name: "D’autres directions",
     exact: false,
   });
-  await reveal.click();
+  await reveal.hover();
   await expect(page.locator(".variation-card")).toHaveCount(4);
-  await reveal.click();
+  await page.locator(".word-logo").hover();
   await expect(page.locator(".variation-card")).toHaveCount(0);
   await page.locator("main .glyph-hit").nth(1).click();
   await expect(page.locator(".drawing-area[data-mode=symbol]")).toBeVisible();
@@ -48,7 +86,7 @@ test("edits and persists gradient stops, and exports a genuinely colored transpa
   await openGradient(page);
   const bar = page.locator('[data-slot="gradient-bar"]');
   await page
-    .getByRole("button", { name: "Ajouter un stop", exact: true })
+    .getByRole("button", { name: "Ajouter un point", exact: true })
     .click();
   await expect(bar.getByRole("slider")).toHaveCount(3);
   const middle = bar.getByRole("slider").nth(1);
@@ -137,7 +175,7 @@ test("applies live solid and gradient paint to 3D without extruding again", asyn
   await openGradient(page);
   await expect(scene).toHaveAttribute("data-paint", /stops/);
   await page
-    .getByRole("button", { name: "Ajouter un stop", exact: true })
+    .getByRole("button", { name: "Ajouter un point", exact: true })
     .click();
   await expect(scene).toHaveAttribute("data-paint", /s\d+/);
   await expect(scene).toHaveAttribute("data-revision", revision!);

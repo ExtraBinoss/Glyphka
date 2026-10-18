@@ -1,13 +1,65 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { updateSiteMeta } from "./site-meta";
 const fr = {
-  presets: "Presets",
-  presetName: "Nom du preset",
-  savePreset: "Enregistrer le preset",
+  introLabel: "Bienvenue sur Glyphka",
+  skipIntro: "Passer",
+  presets: "Préréglages",
+  presetName: "Nom du préréglage",
+  savePreset: "Enregistrer le préréglage",
   loadPreset: "Charger",
   deletePreset: "Supprimer",
   back: "Retour",
   backToWordmark: "Retour au lettrage",
+  recenterView: "Recentrer la vue",
+  resetZoom: "Réinitialiser le zoom",
+  stopColor: "Couleur du point",
+  saturationBrightness: "Saturation et luminosité",
+  hue: "Teinte",
+  colorPlaceholder: "Sélectionner une couleur",
+  chooseColor: "Choisir une couleur",
+  saturation: "Saturation",
+  brightness: "Luminosité",
+  lightness: "Clarté",
+  chroma: "Chroma",
+  red: "Rouge",
+  green: "Vert",
+  blue: "Bleu",
+  opacity: "Opacité",
+  hexColor: "Code hexadécimal",
+  colorFormat: "Format de couleur",
+  copyColor: "Copier la couleur",
+  pickColor: "Prélever une couleur",
+  colorCopied: "Copié",
+  clearColor: "Effacer",
+  swatches: "Palette de couleurs",
+  addToPalette: "Ajouter à la palette",
+  colorBlack: "noir",
+  colorDarkGray: "gris foncé",
+  colorGray: "gris",
+  colorLightGray: "gris clair",
+  colorWhite: "blanc",
+  colorPink: "rose",
+  colorRed: "rouge",
+  colorOrange: "orange",
+  colorYellow: "jaune",
+  colorLime: "vert citron",
+  colorGreen: "vert",
+  colorCyan: "cyan",
+  colorSkyBlue: "bleu ciel",
+  colorBlue: "bleu",
+  colorViolet: "violet",
+  colorPurple: "pourpre",
+  colorMagenta: "magenta",
+  colorBrown: "brun",
+  colorOlive: "olive",
+  colorDark: "foncé",
+  colorLight: "clair",
+  colorVibrant: "vif",
+  colorGrayish: "grisé",
+  value: "valeur",
+  composition: "Composition",
+  vector: "Vectoriel",
   zoomIn: "Zoom avant",
   zoomOut: "Zoom arrière",
   openColorPicker: "Ouvrir le sélecteur de couleur",
@@ -23,6 +75,14 @@ const fr = {
   lunar: "Lunaire",
   neon: "Néon",
   fold: "Pliage",
+  duplex: "Double trait",
+  segmented: "Segments",
+  notched: "Encoches",
+  woven: "Tressé",
+  prism: "Prisme",
+  terminal: "Nœuds",
+  raster: "Trame",
+  crosscut: "Croisé",
   mutation: "Mutation",
   rectangle: "Rectangle",
   polygon: "Polygone",
@@ -37,7 +97,7 @@ const fr = {
   spiral: "Spirale",
   wave: "Vague",
   rosette: "Rosace",
-  superformula: "Superforme",
+  superformula: "Superformule",
   scallop: "Festons",
   arrow: "Flèche",
   points: "Branches",
@@ -49,6 +109,7 @@ const fr = {
   seed: "Graine",
   newDrawing: "Autres dessins",
   procedural: "Génératif",
+  basicShapes: "Formes de base",
   addGenerated: "Générer une forme",
   render3d: "Rendu 3D",
   editShape: "Forme",
@@ -56,6 +117,7 @@ const fr = {
   front: "Face",
   perspective: "Perspective",
   autoRotate: "Rotation automatique",
+  autoRotateSpeed: "Vitesse de rotation",
   orbitHint: "Glisse pour orbiter · Molette pour zoomer",
   volume: "Volume",
   depth: "Extrusion",
@@ -126,12 +188,12 @@ const fr = {
   gradientType: "Type de dégradé",
   linear: "Linéaire",
   radial: "Radial",
-  gradientStops: "Stops du dégradé",
-  stops: "stops",
-  addStop: "Ajouter un stop",
-  removeStop: "Supprimer le stop",
+  gradientStops: "Points du dégradé",
+  stops: "points",
+  addStop: "Ajouter un point",
+  removeStop: "Supprimer le point",
   angle: "Angle",
-  stopPosition: "Position du stop",
+  stopPosition: "Position du point",
   editGradient: "Modifier le dégradé",
   auto: "Auto",
   custom: "Couleur personnalisée",
@@ -142,7 +204,8 @@ const fr = {
   reset: "Réinitialiser",
   fit: "Ajuster",
   zoom: "Zoom",
-  download: "Télécharger",
+  canvasControls: "Vue et repères",
+  download: "Export",
   svg: "SVG",
   png: "PNG",
   copy: "Copier le SVG",
@@ -201,6 +264,8 @@ const fr = {
   selection: "Sélection",
 };
 const en: typeof fr = {
+  introLabel: "Welcome to Glyphka",
+  skipIntro: "Skip intro",
   presets: "Presets",
   presetName: "Preset name",
   savePreset: "Save preset",
@@ -208,6 +273,55 @@ const en: typeof fr = {
   deletePreset: "Delete",
   back: "Back",
   backToWordmark: "Back to lettering",
+  recenterView: "Recenter view",
+  resetZoom: "Reset zoom",
+  stopColor: "Stop color",
+  saturationBrightness: "Saturation and brightness",
+  hue: "Hue",
+  colorPlaceholder: "Select color",
+  chooseColor: "Choose color",
+  saturation: "Saturation",
+  brightness: "Brightness",
+  lightness: "Lightness",
+  chroma: "Chroma",
+  red: "Red",
+  green: "Green",
+  blue: "Blue",
+  opacity: "Opacity",
+  hexColor: "Hex color",
+  colorFormat: "Color format",
+  copyColor: "Copy color",
+  pickColor: "Pick a color",
+  colorCopied: "Copied",
+  clearColor: "Clear",
+  swatches: "Color swatches",
+  addToPalette: "Add to palette",
+  colorBlack: "black",
+  colorDarkGray: "dark gray",
+  colorGray: "gray",
+  colorLightGray: "light gray",
+  colorWhite: "white",
+  colorPink: "pink",
+  colorRed: "red",
+  colorOrange: "orange",
+  colorYellow: "yellow",
+  colorLime: "lime",
+  colorGreen: "green",
+  colorCyan: "cyan",
+  colorSkyBlue: "sky blue",
+  colorBlue: "blue",
+  colorViolet: "violet",
+  colorPurple: "purple",
+  colorMagenta: "magenta",
+  colorBrown: "brown",
+  colorOlive: "olive",
+  colorDark: "dark",
+  colorLight: "light",
+  colorVibrant: "vibrant",
+  colorGrayish: "grayish",
+  value: "value",
+  composition: "Composition",
+  vector: "Vector",
   zoomIn: "Zoom in",
   zoomOut: "Zoom out",
   openColorPicker: "Open color picker",
@@ -223,6 +337,14 @@ const en: typeof fr = {
   lunar: "Lunar",
   neon: "Neon",
   fold: "Fold",
+  duplex: "Duplex",
+  segmented: "Segmented",
+  notched: "Notched",
+  woven: "Woven",
+  prism: "Prism",
+  terminal: "Nodes",
+  raster: "Raster",
+  crosscut: "Crosscut",
   mutation: "Mutation",
   rectangle: "Rectangle",
   polygon: "Polygon",
@@ -237,7 +359,7 @@ const en: typeof fr = {
   spiral: "Spiral",
   wave: "Wave",
   rosette: "Rosette",
-  superformula: "Superform",
+  superformula: "Superformula",
   scallop: "Scallops",
   arrow: "Arrow",
   points: "Branches",
@@ -249,6 +371,7 @@ const en: typeof fr = {
   seed: "Seed",
   newDrawing: "More drawings",
   procedural: "Generative",
+  basicShapes: "Basic shapes",
   addGenerated: "Generate a shape",
   render3d: "3D render",
   editShape: "Shape",
@@ -256,6 +379,7 @@ const en: typeof fr = {
   front: "Front",
   perspective: "Perspective",
   autoRotate: "Auto rotate",
+  autoRotateSpeed: "Rotation speed",
   orbitHint: "Drag to orbit · Scroll to zoom",
   volume: "Volume",
   depth: "Extrusion",
@@ -341,7 +465,8 @@ const en: typeof fr = {
   reset: "Reset",
   fit: "Fit",
   zoom: "Zoom",
-  download: "Download",
+  canvasControls: "View controls",
+  download: "Export",
   svg: "SVG",
   png: "PNG",
   copy: "Copy SVG",
@@ -399,19 +524,16 @@ const en: typeof fr = {
   clear: "Clear",
   selection: "Selection",
 };
-let language = "fr";
-try {
-  language =
-    localStorage.getItem("glyphka.language") ||
-    (navigator.language.startsWith("fr") ? "fr" : "en");
-} catch {
-  /* System language remains the fallback. */
-}
+export const translations = { fr, en } as const;
 void i18n
   .use(initReactI18next)
   .init({
-    resources: { fr: { translation: fr }, en: { translation: en } },
-    lng: language,
+    resources: {
+      fr: { translation: translations.fr },
+      en: { translation: translations.en },
+    },
+    lng: "fr",
+    initAsync: false,
     fallbackLng: "en",
     interpolation: { escapeValue: false },
   })
@@ -419,11 +541,26 @@ void i18n
     console.error("Language initialization failed", error);
   });
 i18n.on("languageChanged", (lng) => {
-  document.documentElement.lang = lng;
+  if (typeof document === "undefined") return;
+  updateSiteMeta(lng);
   try {
     localStorage.setItem("glyphka.language", lng);
   } catch {
     /* Optional persistence. */
   }
 });
+
+export function restoreLanguage() {
+  let language = navigator.language.startsWith("fr") ? "fr" : "en";
+  try {
+    const saved = localStorage.getItem("glyphka.language");
+    if (saved === "fr" || saved === "en") language = saved;
+  } catch {
+    /* Browser language remains available without storage. */
+  }
+  void i18n.changeLanguage(language).catch((error: unknown) => {
+    console.error("Language restoration failed", error);
+  });
+  updateSiteMeta(language);
+}
 export default i18n;

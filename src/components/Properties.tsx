@@ -1,14 +1,15 @@
+import { useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { AnimatePresence, m } from "motion/react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowDown,
   ArrowUp,
   Copy,
   Plus,
+  Shapes,
   RotateCcw,
   Trash2,
-  X,
   Dice5,
 } from "lucide-react";
 import {
@@ -18,10 +19,8 @@ import {
   LIMITS,
   PRESETS,
   SHAPE_KINDS,
-  type Design,
   type GeometryKey,
   type Shape,
-  type ShapeKind,
 } from "@/engine/model";
 import {
   designAtom,
@@ -29,10 +28,13 @@ import {
   modeAtom,
   selectedGlyphAtom,
   selectedShapeAtom,
+  shapePreviewAtom,
+  commitShapeAtom,
   viewAtom,
 } from "@/state/studio";
 import { Lettering, ShapeMark } from "./Drawing";
 import { serializeSvg, random } from "@/engine/geometry";
+import { GeometryField } from "./GeometryField";
 import { RangeField } from "./RangeField";
 import {
   Accordion,
@@ -43,15 +45,11 @@ import {
 import { Button } from "./ui/button";
 import { ButtonGroup } from "./ui/button-group";
 import { Input } from "./ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTitle,
-  PopoverTrigger,
-} from "./ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { InkPicker } from "./InkPicker";
 import { RenderProperties } from "./RenderProperties";
 import { ScrollShadow } from "./ScrollShadow";
+import { ShapeLibrary } from "./ShapeLibrary";
 import { ControlHint } from "./ControlHint";
 
 // Family samples are independent from live slider values and contain no
@@ -148,31 +146,29 @@ export function AddShape({ compact = false }: { compact?: boolean }) {
     edit = useSetAtom(editAtom),
     select = useSetAtom(selectedShapeAtom);
   const design = useAtomValue(designAtom);
-  const add = (kind: ShapeKind, generated = false) => {
+  const [seed, setSeed] = useState(17);
+  const add = (candidate: Shape) => {
     const id = crypto.randomUUID();
-    const shape: Shape = {
-      id,
-      kind,
-      x: 300 + (design.shapes.length % 4) * 12,
-      y: 220 + (design.shapes.length % 3) * 12,
-      width: kind === "capsule" ? 140 : 100,
-      height: kind === "capsule" ? 38 : 100,
-      rotation: 0,
-      cutout: false,
-      seed: parseInt(id.replaceAll("-", "").slice(0, 8), 16) % 2147483647,
-      points: 5,
-      inner: 0.48,
-      tension: 2,
-      twist: 0,
-      irregularity: 0,
-      thickness: 0.26,
-    };
-    if (generated) Object.assign(shape, randomShapeParameters());
-    edit({ ...design, shapes: [...design.shapes, shape] });
+    edit((previous) => ({
+      ...previous,
+      shapes: [
+        ...previous.shapes,
+        {
+          ...candidate,
+          id,
+          x: 300 + (previous.shapes.length % 4) * 12,
+          y: 220 + (previous.shapes.length % 3) * 12,
+        },
+      ],
+    }));
     select(id);
   };
   return (
-    <Popover>
+    <Popover
+      onOpenChange={(open) => {
+        if (open) setSeed(crypto.getRandomValues(new Uint32Array(1))[0]);
+      }}
+    >
       <ControlHint label={t("addShape")} enabled={compact}>
         <PopoverTrigger
           render={
@@ -183,7 +179,7 @@ export function AddShape({ compact = false }: { compact?: boolean }) {
           }
           aria-label={t("addShape")}
         >
-          <Plus />
+          {compact ? <Shapes /> : <Plus />}
           {!compact && t("addShape")}
         </PopoverTrigger>
       </ControlHint>
@@ -193,37 +189,12 @@ export function AddShape({ compact = false }: { compact?: boolean }) {
         sideOffset={10}
         className="shape-popover bg-popover/80 backdrop-blur-xl"
       >
-        <PopoverTitle>{t("addShape")}</PopoverTitle>
-        <Button
-          variant="secondary"
-          className="generate-shape"
-          onClick={() => add("superformula", true)}
-        >
-          <Dice5 />
-          {t("addGenerated")}
-        </Button>
-        <ScrollShadow className="shape-grid" label={t("shapes")}>
-          {SHAPE_KINDS.map((kind) => (
-            <Button key={kind} variant="ghost" onClick={() => add(kind)}>
-              <svg viewBox="-60 -60 120 120" aria-hidden="true">
-                <ShapeMark
-                  shape={{
-                    id: "preview",
-                    kind,
-                    x: 0,
-                    y: 0,
-                    width: 80,
-                    height: kind === "capsule" ? 28 : 80,
-                    rotation: 0,
-                    cutout: false,
-                  }}
-                  weight={23}
-                />
-              </svg>
-              <span>{t(kind)}</span>
-            </Button>
-          ))}
-        </ScrollShadow>
+        <ShapeLibrary
+          key={seed}
+          seed={seed}
+          weight={design.weight}
+          onAdd={add}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -386,60 +357,8 @@ function ShapeProperties() {
                 </button>
               ))}
             </ScrollShadow>
-            <RangeField
-              label={t("width")}
-              value={shape.width}
-              min={12}
-              max={280}
-              onChange={(width) => update({ width })}
-            />
-            <RangeField
-              label={t("height")}
-              value={shape.height}
-              min={12}
-              max={280}
-              onChange={(height) => update({ height })}
-            />
-            <RangeField
-              label={t("rotate")}
-              value={shape.rotation}
-              min={-180}
-              max={180}
-              initial={0}
-              unit="°"
-              onChange={(rotation) => update({ rotation })}
-            />
-            <RangeField
-              label="X"
-              value={shape.x}
-              min={0}
-              max={600}
-              onChange={(x) => update({ x })}
-            />
-            <RangeField
-              label="Y"
-              value={shape.y}
-              min={0}
-              max={440}
-              onChange={(y) => update({ y })}
-            />
           </div>
-          <div className="geometry-fields procedural-fields">
-            {SHAPE_FIELDS.filter((field) =>
-              field.kinds.includes(shape.kind),
-            ).map((field) => (
-              <RangeField
-                key={field.key}
-                label={t(field.key)}
-                value={shape[field.key] ?? field.fallback}
-                min={field.min}
-                max={field.max}
-                step={field.step ?? 1}
-                unit={field.key === "twist" ? "°" : ""}
-                onChange={(value) => update({ [field.key]: value })}
-              />
-            ))}
-          </div>
+          <ShapeGeometryFields shape={shape} />
           <Button
             variant="secondary"
             size="sm"
@@ -470,7 +389,7 @@ function ShapeProperties() {
     </>
   );
 }
-export function Properties({ onClose }: { onClose: () => void }) {
+export function Properties() {
   const { t } = useTranslation(),
     design = useAtomValue(designAtom),
     edit = useSetAtom(editAtom),
@@ -478,12 +397,16 @@ export function Properties({ onClose }: { onClose: () => void }) {
     setMode = useSetAtom(modeAtom),
     [selected, setSelected] = useAtom(selectedGlyphAtom),
     view = useAtomValue(viewAtom);
+  const [drawingRoll, setDrawingRoll] = useState(0);
+  const reducedMotion = useReducedMotion();
   const alternateBase = Math.floor((design.alternates[selected] ?? 0) / 4) * 4;
   const safeSelected = Math.min(selected, Math.max(0, design.text.length - 1));
-  const change = (key: GeometryKey, value: number) =>
-    edit({ [key]: value } as Partial<Design>);
   return (
-    <aside className="properties glass" aria-label={t("settings")}>
+    <aside
+      data-inspector=""
+      className="properties glass"
+      aria-label={t("settings")}
+    >
       <header className="panel-header">
         <h2>{t(mode)}</h2>
         <div>
@@ -501,15 +424,6 @@ export function Properties({ onClose }: { onClose: () => void }) {
             }
           >
             <RotateCcw />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="panel-close"
-            aria-label={t("close")}
-            onClick={onClose}
-          >
-            <X />
           </Button>
         </div>
       </header>
@@ -554,7 +468,7 @@ export function Properties({ onClose }: { onClose: () => void }) {
                     maxLength={36}
                     autoComplete="off"
                     spellCheck={false}
-                    placeholder="PLINKA"
+                    placeholder="GLYPHKA"
                   />
                 </section>
                 <section className="panel-section">
@@ -595,21 +509,10 @@ export function Properties({ onClose }: { onClose: () => void }) {
                     <AccordionContent>
                       <div className="geometry-fields">
                         {(Object.keys(LIMITS) as GeometryKey[]).map((key) => (
-                          <RangeField
+                          <GeometryField
                             key={key}
-                            label={t(key)}
-                            value={design[key]}
-                            min={LIMITS[key][0]}
-                            max={LIMITS[key][1]}
-                            initial={PRESETS[design.family][key] as number}
-                            unit={
-                              key === "slant"
-                                ? "°"
-                                : key === "roundness" || key === "cutouts"
-                                  ? "%"
-                                  : ""
-                            }
-                            onChange={(value) => change(key, value)}
+                            field={key}
+                            family={design.family}
                           />
                         ))}
                       </div>
@@ -623,16 +526,31 @@ export function Properties({ onClose }: { onClose: () => void }) {
                           variant="ghost"
                           size="sm"
                           aria-label={t("newDrawing")}
-                          onClick={() =>
+                          onClick={() => {
+                            setDrawingRoll((value) => value + 1);
                             edit({
                               alternates: {
                                 ...design.alternates,
                                 [safeSelected]: alternateBase + 4,
                               },
-                            })
-                          }
+                            });
+                          }}
                         >
-                          <Dice5 />
+                          <m.span
+                            aria-hidden="true"
+                            className="inline-flex"
+                            initial={false}
+                            animate={{
+                              rotate: reducedMotion ? 0 : drawingRoll * 360,
+                            }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 300,
+                              damping: 24,
+                            }}
+                          >
+                            <Dice5 />
+                          </m.span>
                           {t("newDrawing")}
                         </Button>
                       </div>
@@ -698,5 +616,80 @@ export function Properties({ onClose }: { onClose: () => void }) {
         <InkPicker />
       </ScrollShadow>
     </aside>
+  );
+}
+
+function ShapeGeometryFields({ shape: committed }: { shape: Shape }) {
+  const { t } = useTranslation();
+  const preview = useAtomValue(shapePreviewAtom);
+  const setPreview = useSetAtom(shapePreviewAtom);
+  const commit = useSetAtom(commitShapeAtom);
+  const shape = preview?.id === committed.id ? preview : committed;
+  const update = (patch: Partial<Shape>) => setPreview({ ...shape, ...patch });
+  return (
+    <>
+      <div className="geometry-fields">
+        {" "}
+        <RangeField
+          label={t("width")}
+          value={shape.width}
+          min={12}
+          max={280}
+          onCommit={commit}
+          onChange={(width) => update({ width })}
+        />
+        <RangeField
+          label={t("height")}
+          value={shape.height}
+          min={12}
+          max={280}
+          onCommit={commit}
+          onChange={(height) => update({ height })}
+        />
+        <RangeField
+          label={t("rotate")}
+          value={shape.rotation}
+          min={-180}
+          max={180}
+          initial={0}
+          unit="°"
+          onCommit={commit}
+          onChange={(rotation) => update({ rotation })}
+        />
+        <RangeField
+          label="X"
+          value={shape.x}
+          min={0}
+          max={600}
+          onCommit={commit}
+          onChange={(x) => update({ x })}
+        />
+        <RangeField
+          label="Y"
+          value={shape.y}
+          min={0}
+          max={440}
+          onCommit={commit}
+          onChange={(y) => update({ y })}
+        />
+      </div>
+      <div className="geometry-fields procedural-fields">
+        {SHAPE_FIELDS.filter((field) => field.kinds.includes(shape.kind)).map(
+          (field) => (
+            <RangeField
+              key={field.key}
+              label={t(field.key)}
+              value={shape[field.key] ?? field.fallback}
+              min={field.min}
+              max={field.max}
+              step={field.step ?? 1}
+              unit={field.key === "twist" ? "°" : ""}
+              onCommit={commit}
+              onChange={(value) => update({ [field.key]: value })}
+            />
+          ),
+        )}
+      </div>
+    </>
   );
 }

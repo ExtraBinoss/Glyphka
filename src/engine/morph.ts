@@ -13,8 +13,12 @@ function normalize(path: string) {
       .unshort()
       .unarc()
       .round(3)
-      .iterate((segment) => {
-        segments.push(segment.join(" "));
+      .iterate((segment, _index, x, y) => {
+        // Interpolation needs both coordinates when a line becomes a curve.
+        // H/V omit one coordinate and can otherwise introduce NaN controls.
+        if (segment[0] === "H") segments.push(`L ${segment[1]} ${y}`);
+        else if (segment[0] === "V") segments.push(`L ${x} ${segment[1]}`);
+        else segments.push(segment.join(" "));
       });
     value = segments.join(" ");
     normalized.set(path, value);

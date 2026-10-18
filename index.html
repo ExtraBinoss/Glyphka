@@ -6,7 +6,49 @@
     <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
-      content="Glyphka — an experimental geometric lettering studio. Shape a wordmark, explore symbols, and export your own vector identity."
+      content="Crée des lettrages géométriques, compose des symboles et explore leurs volumes en 3D. Un atelier génératif gratuit, dans ton navigateur, avec export SVG et PNG."
+    />
+    <meta name="application-name" content="Glyphka" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://glyphka.plinka.eu/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Glyphka" />
+    <meta property="og:url" content="https://glyphka.plinka.eu/" />
+    <meta property="og:title" content="Glyphka — Crée ton langage graphique" />
+    <meta
+      property="og:description"
+      content="Crée des lettrages géométriques, compose des symboles et explore leurs volumes en 3D. Un atelier génératif gratuit, dans ton navigateur, avec export SVG et PNG."
+    />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta
+      property="og:image"
+      content="https://glyphka.plinka.eu/social/glyphka.png"
+    />
+    <meta
+      property="og:image:secure_url"
+      content="https://glyphka.plinka.eu/social/glyphka.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Glyphka : le logo Stencil, neuf lettres colorées, Try it! et le site glyphka.plinka.eu sur fond clair."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Glyphka — Crée ton langage graphique" />
+    <meta
+      name="twitter:description"
+      content="Crée des lettrages géométriques, compose des symboles et explore leurs volumes en 3D. Un atelier génératif gratuit, dans ton navigateur, avec export SVG et PNG."
+    />
+    <meta
+      name="twitter:image"
+      content="https://glyphka.plinka.eu/social/glyphka.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Glyphka : le logo Stencil, neuf lettres colorées, Try it! et le site glyphka.plinka.eu sur fond clair."
     />
     <meta name="theme-color" content="#fbfbfd" />
     <script>
@@ -27,8 +69,24 @@
         );
       }
     </script>
+    <script>
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.dataset.glyphkaIntro = "pending";
+        setTimeout(() => {
+          if (document.documentElement.dataset.glyphkaIntro === "pending")
+            delete document.documentElement.dataset.glyphkaIntro;
+        }, 4500);
+      }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Glyphka — Shape your own language</title>
+    <link
+      rel="preload"
+      href="/node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <title>Glyphka — Crée ton langage graphique</title>
     <style>
       html {
         background: #fbfbfd;
@@ -37,6 +95,28 @@
       html.dark {
         background: #1c1c1e;
         color-scheme: dark;
+      }
+      .startup-intro {
+        display: none;
+      }
+      html[data-glyphka-intro] .studio {
+        opacity: 0;
+        pointer-events: none;
+      }
+      html[data-glyphka-intro] .startup-intro {
+        display: grid;
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        place-items: center;
+      }
+      .startup-veil {
+        position: absolute;
+        inset: 0;
+        background: #fbfbfd;
+      }
+      html.dark .startup-veil {
+        background: #1c1c1e;
       }
     </style>
   </head>

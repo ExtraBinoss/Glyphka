@@ -6,14 +6,30 @@ import { cpus } from "node:os";
 const url = process.env.GLYPHKA_PERF_URL ?? "http://127.0.0.1:8403/?profile";
 const output =
   process.env.GLYPHKA_PERF_REPORT ?? "artifacts/browser-performance.json";
+const seed = Number(process.env.GLYPHKA_PERF_SEED ?? 4250) >>> 0;
+const systemGpu = process.env.GLYPHKA_PERF_GPU === "system";
+const gpuMode = systemGpu
+  ? "System backend requested"
+  : "SwiftShader software GPU";
 const browser = await chromium.launch({
-  args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+  args: systemGpu
+    ? ["--enable-gpu", "--enable-unsafe-swiftshader"]
+    : ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
 });
 const page = await browser.newPage({
   viewport: { width: 1440, height: 1000 },
   locale: "fr-FR",
   reducedMotion: "no-preference",
 });
+await page.addInitScript((seed) => {
+  let state = seed || 1;
+  Math.random = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return (state >>> 0) / 4294967296;
+  };
+}, seed);
 const errors: string[] = [];
 page.on("pageerror", (e) => errors.push(e.message));
 await page.addInitScript(() => {
@@ -89,13 +105,16 @@ await page.addInitScript(() => {
       records.some(
         (r) =>
           r.target instanceof Element &&
-          r.target.closest(".canvas-area") &&
+          r.target.closest(".canvas-area, .rail, [role=tooltip]") &&
           [
+            "class",
             "d",
             "stroke-width",
             "viewBox",
             "style",
             "data-paint",
+            "data-background",
+            "data-rotation-speed",
             "fill",
             "stop-color",
             "offset",
@@ -191,6 +210,24 @@ async function scenario(name: string, run: () => Promise<unknown>) {
     elapsedMs: Math.round(performance.now() - start),
   });
   console.log(name, JSON.stringify(rows.at(-1)));
+  await mkdir("artifacts", { recursive: true });
+  await writeFile(
+    output,
+    JSON.stringify(
+      {
+        complete: false,
+        seed,
+        measuredAt: new Date().toISOString(),
+        browser: browser.version(),
+        gpu: gpuMode,
+        note: "Partial report; a later scenario may still fail. Durations include hardware contention.",
+        rows,
+        errors,
+      },
+      null,
+      2,
+    ),
+  );
 }
 async function drag(selector: string) {
   const control = page.locator(selector).first();
@@ -218,7 +255,7 @@ async function openGradient(p: Page) {
 }
 try {
   await page.goto(url);
-  await page.getByRole("img", { name: "PLINKA", exact: true }).waitFor();
+  await page.getByRole("img", { name: "GLYPHKA", exact: true }).waitFor();
   await page.waitForTimeout(1500);
   const startup = await page.evaluate(() => ({
     paint: performance
@@ -257,7 +294,7 @@ try {
   });
   await page
     .getByRole("button", { name: "D’autres directions", exact: false })
-    .click();
+    .hover();
   await scenario("2D direction hover", async () => {
     for (let i = 0; i < 16; i++)
       await page
@@ -270,7 +307,7 @@ try {
     .getByRole("button", { name: "Couleur personnalisée", exact: true })
     .click();
   await scenario("2D solid color drag", () =>
-    drag('[data-slot="color-picker-area"]'),
+    drag('.fill-popover [data-slot="color-picker-area"]'),
   );
   await page.keyboard.press("Escape");
   await openGradient(page);
@@ -307,6 +344,9 @@ try {
     (window as unknown as Record<string, unknown>).__originalCanvas =
       document.querySelector(".three-host canvas");
   });
+  await page
+    .getByRole("button", { name: "D’autres directions", exact: false })
+    .hover();
   await scenario("3D direction hover", async () => {
     for (let i = 0; i < 16; i++) {
       await page
@@ -331,9 +371,29 @@ try {
   const paintRebuiltGeometry =
     revision !== (await scene.getAttribute("data-revision"));
   await page.keyboard.press("Escape");
+  await page.locator(".gradient-editor").waitFor({ state: "detached" });
+  await page
+    .getByRole("switch", { name: "Fond transparent", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Arrière-plan", exact: true }).click();
+  await scenario("3D background color drag", () =>
+    drag(
+      '[data-slot="popover-content"]:has([data-slot="popover-title"]:text-is("Arrière-plan")) [data-slot="color-picker-area"]',
+    ),
+  );
+  const backgroundRebuiltGeometry =
+    revision !== (await scene.getAttribute("data-revision"));
+  await page.keyboard.press("Escape");
+  await scenario("3D material roughness drag", () =>
+    drag(
+      '[data-slot="slider"]:has(input[type="range"][aria-label="Rugosité"]) [data-slot="slider-track"]',
+    ),
+  );
+  const materialRebuiltGeometry =
+    revision !== (await scene.getAttribute("data-revision"));
   await scenario("3D extrusion drag", () =>
     drag(
-      '[data-slot="slider"]:has([role="slider"][aria-label="Extrusion"]) [data-slot="slider-track"]',
+      '[data-slot="slider"]:has(input[type="range"][aria-label="Extrusion"]) [data-slot="slider-track"]',
     ),
   );
   await page.waitForFunction(
@@ -364,7 +424,24 @@ try {
       (window as unknown as Record<string, unknown>).__originalCanvas ===
       document.querySelector(".three-host canvas"),
   );
+  const gpuInfo = await page.evaluate(() => {
+    const canvas =
+      document.querySelector<HTMLCanvasElement>(".three-host canvas");
+    const gl = canvas?.getContext("webgl2");
+    if (!gl) return null;
+    const debug = gl.getExtension("WEBGL_debug_renderer_info");
+    return {
+      renderer: String(
+        gl.getParameter(debug?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER),
+      ),
+      vendor: String(
+        gl.getParameter(debug?.UNMASKED_VENDOR_WEBGL ?? gl.VENDOR),
+      ),
+    };
+  });
   const report = {
+    complete: true,
+    seed,
     revision: execFileSync("git", ["rev-parse", "HEAD"], {
       encoding: "utf8",
     }).trim(),
@@ -374,7 +451,8 @@ try {
     measuredAt: new Date().toISOString(),
     browser: browser.version(),
     viewport: "1440×1000",
-    gpu: "SwiftShader software GPU",
+    gpu: gpuMode,
+    gpuInfo,
     cpu: cpus()[0]?.model,
     note: "Local production build. Input-to-DOM measures event handling through the relevant SVG/material mutation, not photon latency. Frame intervals cover the whole scenario including automation waits. Hardware contention affects timings.",
     startup,
@@ -384,12 +462,16 @@ try {
     warmClickToFrameMs,
     sameCanvas,
     paintRebuiltGeometry,
+    backgroundRebuiltGeometry,
+    materialRebuiltGeometry,
     rows,
     errors,
   };
   await mkdir("artifacts", { recursive: true });
   await writeFile(output, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
+  if (errors.length)
+    throw new Error("Browser runtime errors were recorded in the report");
 } finally {
   await browser.close();
 }

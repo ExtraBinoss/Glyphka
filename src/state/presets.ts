@@ -1,4 +1,4 @@
-import { atom } from "jotai";
+import { atom, getDefaultStore } from "jotai";
 import { validateDesign, type Design, type Mode } from "@/engine/model";
 import {
   commitPaintAtom,
@@ -6,6 +6,7 @@ import {
   editAtom,
   modeAtom,
   previewDesignAtom,
+  previewSceneAtom,
   selectedGlyphAtom,
   selectedShapeAtom,
   viewAtom,
@@ -21,6 +22,49 @@ export interface SavedPreset {
   selected: number;
 }
 const STORAGE = "glyphka.presets.v1";
+const ACTIVE_STORAGE = "glyphka.preset.active.v1";
+const preferredPresetIdAtom = atom<string | null>(null);
+const recentPresetIdsAtom = atom<string[]>([]);
+const designKeys = new WeakMap<Design, string>();
+function designKey(design: Design) {
+  let key = designKeys.get(design);
+  if (key === undefined) {
+    key = JSON.stringify(validateDesign(design));
+    designKeys.set(design, key);
+  }
+  return key;
+}
+// Preview frames never invalidate this atom. Only committed edits can change selection.
+export const activePresetIdAtom = atom((get) => {
+  const presets = get(presetsAtom);
+  if (!presets.length) return null;
+  const key = designKey(get(designAtom));
+  const mode = get(modeAtom),
+    view = get(viewAtom),
+    selected = get(selectedGlyphAtom);
+  const matches = (preset: SavedPreset) =>
+    preset.mode === mode &&
+    preset.view === view &&
+    (mode !== "symbol" || preset.selected === selected) &&
+    designKey(preset.design) === key;
+  const preferred = presets.find(
+    (preset) => preset.id === get(preferredPresetIdAtom),
+  );
+  if (preferred && matches(preferred)) return preferred.id;
+  for (const id of [...get(recentPresetIdsAtom)].reverse()) {
+    const preset = presets.find((item) => item.id === id);
+    if (preset && matches(preset)) return id;
+  }
+  return presets.find(matches)?.id ?? null;
+});
+function persistActive(id: string | null) {
+  try {
+    if (id) localStorage.setItem(ACTIVE_STORAGE, id);
+    else localStorage.removeItem(ACTIVE_STORAGE);
+  } catch {
+    /* Optional persistence. */
+  }
+}
 export function validatePresets(value: unknown): SavedPreset[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, PRESET_LIMIT).flatMap((raw, i) => {
@@ -55,7 +99,22 @@ function load() {
     return [];
   }
 }
-export const presetsAtom = atom<SavedPreset[]>(load());
+const initialPresets: SavedPreset[] = [];
+export const presetsAtom = atom<SavedPreset[]>(initialPresets);
+const storageRestoredAtom = atom(false);
+const restorePresetsAtom = atom(null, (get, set) => {
+  if (get(storageRestoredAtom)) return;
+  set(storageRestoredAtom, true);
+  if (get(presetsAtom) === initialPresets) set(presetsAtom, load());
+  try {
+    set(preferredPresetIdAtom, localStorage.getItem(ACTIVE_STORAGE));
+  } catch {
+    /* Optional persistence. */
+  }
+});
+export function restorePresetsFromStorage(store = getDefaultStore()) {
+  store.set(restorePresetsAtom);
+}
 function persist(presets: SavedPreset[]) {
   try {
     localStorage.setItem(STORAGE, JSON.stringify(presets));
@@ -66,6 +125,11 @@ function persist(presets: SavedPreset[]) {
 export const savePresetAtom = atom(null, (get, set, name: string) => {
   const presets = get(presetsAtom);
   if (presets.length >= PRESET_LIMIT) return false;
+  const current = get(activePresetIdAtom);
+  if (current)
+    set(recentPresetIdsAtom, (ids) =>
+      [...ids.filter((id) => id !== current), current].slice(-PRESET_LIMIT),
+    );
   set(commitPaintAtom);
   const mode = get(modeAtom);
   const next = [
@@ -83,20 +147,40 @@ export const savePresetAtom = atom(null, (get, set, name: string) => {
     },
   ];
   set(presetsAtom, next);
+  set(preferredPresetIdAtom, next.at(-1)!.id);
+  persistActive(next.at(-1)!.id);
   persist(next);
   return true;
 });
 export const deletePresetAtom = atom(null, (get, set, id: string) => {
   const next = get(presetsAtom).filter((p) => p.id !== id);
   set(presetsAtom, next);
+  if (get(preferredPresetIdAtom) === id) {
+    set(preferredPresetIdAtom, null);
+    persistActive(null);
+  }
   persist(next);
 });
-export const loadPresetAtom = atom(null, (_get, set, preset: SavedPreset) => {
+export const loadPresetAtom = atom(null, (get, set, preset: SavedPreset) => {
+  const current = get(activePresetIdAtom);
+  if (current)
+    set(recentPresetIdsAtom, (ids) =>
+      [...ids.filter((id) => id !== current), current].slice(-PRESET_LIMIT),
+    );
   set(commitPaintAtom);
   set(previewDesignAtom, null);
-  set(editAtom, structuredClone(preset.design));
+  // Documents are immutable. Reuse the already previewed snapshot and its geometry caches.
+  set(editAtom, preset.design);
   set(modeAtom, preset.mode);
   set(viewAtom, preset.view);
   set(selectedGlyphAtom, preset.selected);
   set(selectedShapeAtom, null);
+  set(preferredPresetIdAtom, preset.id);
+  persistActive(preset.id);
 });
+export const previewPresetAtom = atom(
+  null,
+  (_get, set, preset: SavedPreset | null) => {
+    set(previewSceneAtom, preset);
+  },
+);

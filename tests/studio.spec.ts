@@ -14,21 +14,21 @@ test("edits text, all geometry controls, letter variants, and history", async ({
     page.getByRole("img", { name: "ORBES", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("textbox", { name: "Épaisseur · value", exact: true })
+    .getByRole("textbox", { name: "Épaisseur · valeur", exact: true })
     .fill("31");
   await page
-    .getByRole("textbox", { name: "Épaisseur · value", exact: true })
+    .getByRole("textbox", { name: "Épaisseur · valeur", exact: true })
     .press("Enter");
   await expect(
     page.getByRole("slider", { name: "Épaisseur", exact: true }),
   ).toHaveAttribute("aria-valuenow", "31");
   await page.getByRole("button", { name: "Annuler", exact: true }).click();
   await expect(
-    page.getByRole("textbox", { name: "Épaisseur · value", exact: true }),
+    page.getByRole("textbox", { name: "Épaisseur · valeur", exact: true }),
   ).toHaveValue("23");
   await page.getByRole("button", { name: "Rétablir", exact: true }).click();
   await expect(
-    page.getByRole("textbox", { name: "Épaisseur · value", exact: true }),
+    page.getByRole("textbox", { name: "Épaisseur · valeur", exact: true }),
   ).toHaveValue("31");
   const original = await page.locator("main .lettering").first().innerHTML();
   await page.getByRole("button", { name: "Dessin 4", exact: true }).click();
@@ -97,7 +97,7 @@ test("drags, resizes, duplicates and subtracts vector parts", async ({
   const shape = page.locator("[data-shape-id=stem]"),
     hit = await shape.locator("path").first().boundingBox();
   const before = await page
-    .getByRole("textbox", { name: "X · value", exact: true })
+    .getByRole("textbox", { name: "X · valeur", exact: true })
     .inputValue();
   await page.mouse.move(hit!.x + hit!.width * 0.5, hit!.y + hit!.height * 0.7);
   await page.mouse.down();
@@ -109,13 +109,13 @@ test("drags, resizes, duplicates and subtracts vector parts", async ({
   await page.mouse.up();
   expect(
     await page
-      .getByRole("textbox", { name: "X · value", exact: true })
+      .getByRole("textbox", { name: "X · valeur", exact: true })
       .inputValue(),
   ).not.toBe(before);
   const handle = shape.locator('[data-handle="1,1"]'),
     hb = await handle.boundingBox();
   const width = await page
-    .getByRole("textbox", { name: "Largeur · value", exact: true })
+    .getByRole("textbox", { name: "Largeur · valeur", exact: true })
     .inputValue();
   await page.mouse.move(hb!.x + hb!.width / 2, hb!.y + hb!.height / 2);
   await page.mouse.down();
@@ -127,7 +127,7 @@ test("drags, resizes, duplicates and subtracts vector parts", async ({
   await page.mouse.up();
   expect(
     await page
-      .getByRole("textbox", { name: "Largeur · value", exact: true })
+      .getByRole("textbox", { name: "Largeur · valeur", exact: true })
       .inputValue(),
   ).not.toBe(width);
   await page.getByRole("button", { name: "Dupliquer", exact: true }).click();
@@ -182,7 +182,7 @@ test("exports actual standalone SVG and transparent PNG", async ({ page }) => {
   expect(svg).toContain("<svg");
   expect(svg).not.toContain("currentColor");
   expect(svg).not.toContain("<text");
-  await page.getByRole("button", { name: "Télécharger", exact: true }).click();
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   const [pngDownload] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "PNG 2×", exact: true }).click(),
@@ -282,14 +282,14 @@ test("fits mobile, opens a properties drawer and keeps About content visible", a
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(
-    page.getByRole("img", { name: "PLINKA", exact: true }),
+    page.getByRole("img", { name: "GLYPHKA", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Réglages", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "Ton texte", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("complementary")
+    .getByRole("dialog", { name: "Réglages", exact: true })
     .getByRole("button", { name: "Fermer", exact: true })
     .click();
   await page.getByRole("button", { name: "À propos", exact: true }).click();

@@ -1,29 +1,35 @@
 import { useEffect, useRef, useState } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import { Box } from "lucide-react";
 import { useAnimate } from "motion/react";
 import {
-  renderDesignAtom,
+  threeDesignAtom,
+  gestureActiveAtom,
   paintAtom,
-  modeAtom,
-  selectedGlyphAtom,
+  canvasModeAtom,
+  canvasSelectedGlyphAtom,
+  previewDesignAtom,
   threeApiAtom,
   zoomAtom,
+  threeDisplacedAtom,
+  renderSettingsAtom,
 } from "@/state/studio";
 import { ThreeStudio } from "@/lib/three-studio";
 import { createEnvironment } from "@/lib/environment";
 
 export default function ThreeView({ active = true }: { active?: boolean }) {
-  const design = useAtomValue(renderDesignAtom),
-    paint = useAtomValue(paintAtom),
-    mode = useAtomValue(modeAtom),
+  const design = useAtomValue(threeDesignAtom),
+    mode = useAtomValue(canvasModeAtom),
     zoom = useAtomValue(zoomAtom),
-    selected = useAtomValue(selectedGlyphAtom),
+    selected = useAtomValue(canvasSelectedGlyphAtom),
+    preview = useAtomValue(previewDesignAtom),
     setApi = useSetAtom(threeApiAtom),
+    setDisplaced = useSetAtom(threeDisplacedAtom),
     { t } = useTranslation();
   const host = useRef<HTMLDivElement>(null),
     studio = useRef<ThreeStudio | null>(null),
+    appliedDesign = useRef(design),
     [status, setStatus] = useState("loading");
   const [scope, animate] = useAnimate();
   const disposal = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -32,11 +38,11 @@ export default function ThreeView({ active = true }: { active?: boolean }) {
     if (!active) return;
     const animation = animate(
       scope.current,
-      { opacity: [0.4, 1], scale: [0.98, 1] },
-      { duration: 0.32 },
+      { opacity: preview ? 1 : [0.4, 1], scale: preview ? 1 : [0.98, 1] },
+      { duration: preview ? 0 : 0.32 },
     );
     return () => animation.stop();
-  }, [mode, active, animate, scope]);
+  }, [mode, active, preview, animate, scope]);
   useEffect(() => {
     clearTimeout(disposal.current);
     if (!host.current || studio.current)
@@ -54,7 +60,11 @@ export default function ThreeView({ active = true }: { active?: boolean }) {
         reset: () => instance.reset(),
         front: () => instance.view(true),
         perspective: () => instance.view(false),
-        zoom: (percent: number) => instance.zoom(percent),
+        zoom: (percent: number, immediate = false) =>
+          instance.zoom(percent, immediate),
+        pan: (x: number, y: number) => instance.pan(x, y),
+        recenter: () => instance.recenter(),
+        panMode: (enabled: boolean) => instance.panMode(enabled),
       };
       instance = new ThreeStudio(
         host.current,
@@ -72,6 +82,7 @@ export default function ThreeView({ active = true }: { active?: boolean }) {
           }
         },
         createEnvironment(),
+        setDisplaced,
       );
       studio.current = instance;
     } catch {
@@ -80,6 +91,7 @@ export default function ThreeView({ active = true }: { active?: boolean }) {
     }
     return () => {
       setApi(null);
+      setDisplaced(false);
       disposal.current = setTimeout(() => {
         instance.dispose();
         studio.current = null;
@@ -87,7 +99,10 @@ export default function ThreeView({ active = true }: { active?: boolean }) {
     };
     // The scene owns GPU resources for this mount. Updates use the next effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setApi]);
+  }, [setApi, setDisplaced]);
+  useEffect(() => {
+    studio.current?.canvas.setAttribute("aria-label", t("render3d"));
+  }, [t]);
   useEffect(() => {
     studio.current?.zoom(zoom);
   }, [zoom, active]);
@@ -97,33 +112,63 @@ export default function ThreeView({ active = true }: { active?: boolean }) {
   useEffect(() => {
     if (!active && prepared.current) return;
     prepared.current = true;
+    appliedDesign.current = design;
+    const paint = getDefaultStore().get(paintAtom);
+    studio.current?.update(
+      { ...design, render: getDefaultStore().get(renderSettingsAtom) },
+      mode === "shapes" ? "shapes" : mode === "symbol" ? "symbol" : "wordmark",
+      Math.min(selected, Math.max(0, design.text.length - 1)),
+      {
+        color:
+          paint.color === "auto"
+            ? getComputedStyle(document.documentElement)
+                .getPropertyValue("--foreground")
+                .trim()
+            : paint.color,
+        gradient: paint.gradient,
+      },
+      getDefaultStore().get(gestureActiveAtom),
+    );
+  }, [design, mode, selected, active]);
+  useEffect(() => {
+    if (!active) return;
+    const store = getDefaultStore();
     const update = () => {
-      const ink =
-        paint.color === "auto"
-          ? getComputedStyle(document.documentElement)
-              .getPropertyValue("--foreground")
-              .trim()
-          : paint.color;
-      studio.current?.update(
-        design,
-        mode === "shapes"
-          ? "shapes"
-          : mode === "symbol"
-            ? "symbol"
-            : "wordmark",
-        Math.min(selected, Math.max(0, design.text.length - 1)),
-        { color: ink, gradient: paint.gradient },
-      );
+      const paint = store.get(paintAtom);
+      studio.current?.setPaint({
+        color:
+          paint.color === "auto"
+            ? getComputedStyle(document.documentElement)
+                .getPropertyValue("--foreground")
+                .trim()
+            : paint.color,
+        gradient: paint.gradient,
+      });
     };
     update();
-    if (!active) return;
+    const unsubscribe = store.sub(paintAtom, update);
+    const render = () => {
+      // A design change is applied atomically by the geometry effect. Combining
+      // its new extrusion with the previous glyph would enqueue a wasted mesh.
+      if (store.get(threeDesignAtom) !== appliedDesign.current) return;
+      studio.current?.setRender(
+        store.get(renderSettingsAtom),
+        store.get(gestureActiveAtom),
+      );
+    };
+    render();
+    const unrender = store.sub(renderSettingsAtom, render);
     const theme = new MutationObserver(update);
     theme.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],
     });
-    return () => theme.disconnect();
-  }, [design, mode, selected, paint, active]);
+    return () => {
+      unsubscribe();
+      unrender();
+      theme.disconnect();
+    };
+  }, [active]);
   return (
     <div ref={scope} className="three-view">
       <div ref={host} className="three-host" data-testid="three-scene" />

@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSetAtom } from "jotai";
 import { RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group";
 import { Button } from "@/components/ui/button";
+import { beginInspectorPeek } from "@/lib/inspector-peek";
 import { beginGestureAtom, endGestureAtom } from "@/state/studio";
 
 export function RangeField({
@@ -16,6 +22,8 @@ export function RangeField({
   unit = "",
   initial,
   onChange,
+  onCommit,
+  disabled = false,
 }: {
   label: string;
   value: number;
@@ -25,7 +33,12 @@ export function RangeField({
   unit?: string;
   initial?: number;
   onChange: (v: number) => void;
+  onCommit?: () => void;
+  disabled?: boolean;
 }) {
+  const field = useRef<HTMLDivElement>(null);
+  const disposePeek = useRef<(() => void) | undefined>(undefined);
+  useEffect(() => () => disposePeek.current?.(), []);
   const [draft, setDraft] = useState<string | null>(null);
   const { t } = useTranslation();
   const begin = useSetAtom(beginGestureAtom),
@@ -39,7 +52,11 @@ export function RangeField({
     }
   };
   return (
-    <div className="range-field">
+    <div
+      ref={field}
+      className="range-field"
+      data-disabled={disabled || undefined}
+    >
       <div className="range-heading">
         <label htmlFor={`value-${label}`}>{label}</label>
         <div className="range-value">
@@ -49,32 +66,44 @@ export function RangeField({
               size="icon-xs"
               className="range-reset"
               aria-label={`${label} · ${t("reset")}`}
-              onClick={() => onChange(initial)}
+              disabled={disabled}
+              onClick={() => {
+                onChange(initial);
+                onCommit?.();
+              }}
             >
               <RotateCcw />
             </Button>
           )}
-          <Input
-            id={`value-${label}`}
-            aria-label={`${label} · value`}
-            inputMode="decimal"
-            value={draft ?? String(Math.round(value * 100) / 100)}
-            onChange={(e) => setDraft(e.target.value)}
-            onFocus={() => begin()}
-            onBlur={() => {
-              commit();
-              end();
-            }}
-            onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing) return;
-              if (e.key === "Enter") e.currentTarget.blur();
-              if (e.key === "Escape") {
-                setDraft(null);
-                e.currentTarget.blur();
-              }
-            }}
-          />
-          {unit && <span>{unit}</span>}
+          <InputGroup className="range-input">
+            <InputGroupInput
+              id={`value-${label}`}
+              aria-label={`${label} · ${t("value")}`}
+              inputMode="decimal"
+              disabled={disabled}
+              value={draft ?? String(Math.round(value * 100) / 100)}
+              onChange={(e) => setDraft(e.target.value)}
+              onFocus={() => begin()}
+              onBlur={() => {
+                commit();
+                onCommit?.();
+                end();
+              }}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) return;
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") {
+                  setDraft(null);
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+            {unit && (
+              <InputGroupAddon align="inline-end">
+                <InputGroupText>{unit}</InputGroupText>
+              </InputGroupAddon>
+            )}
+          </InputGroup>
         </div>
       </div>
       <Slider
@@ -82,12 +111,26 @@ export function RangeField({
         min={min}
         max={max}
         step={step}
+        disabled={disabled}
         aria-label={label}
         onValueChange={(v) => onChange(Array.isArray(v) ? v[0] : v)}
-        onPointerDownCapture={() => begin()}
-        onValueCommitted={() => end()}
+        onPointerDownCapture={(event) => {
+          begin();
+          if (!disabled && field.current)
+            disposePeek.current = beginInspectorPeek(
+              field.current,
+              event.pointerId,
+            );
+        }}
+        onValueCommitted={() => {
+          onCommit?.();
+          end();
+        }}
         onKeyDownCapture={() => begin()}
-        onKeyUpCapture={() => end()}
+        onKeyUpCapture={() => {
+          onCommit?.();
+          end();
+        }}
       />
     </div>
   );

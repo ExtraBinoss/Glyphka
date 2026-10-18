@@ -44,10 +44,10 @@ test("a procedural shape changes continuously and the shape list is not capped a
   await page.keyboard.press("Escape");
   const initial = await page.locator(".shape-canvas").innerHTML();
   await page
-    .getByRole("textbox", { name: "Tension · value", exact: true })
+    .getByRole("textbox", { name: "Tension · valeur", exact: true })
     .fill("3.15");
   await page
-    .getByRole("textbox", { name: "Tension · value", exact: true })
+    .getByRole("textbox", { name: "Tension · valeur", exact: true })
     .press("Enter");
   expect(await page.locator(".shape-canvas").innerHTML()).not.toBe(initial);
   await page.waitForFunction(
@@ -112,10 +112,10 @@ test("extrudes actual geometry, orbits it and exports a nonempty 3D PNG", async 
     .digest("hex");
   expect(after).not.toBe(before);
   await page
-    .getByRole("textbox", { name: "Extrusion · value", exact: true })
+    .getByRole("textbox", { name: "Extrusion · valeur", exact: true })
     .fill("72");
   await page
-    .getByRole("textbox", { name: "Extrusion · value", exact: true })
+    .getByRole("textbox", { name: "Extrusion · valeur", exact: true })
     .press("Enter");
   await expect(scene).toHaveAttribute("data-depth", "72");
   await page.getByRole("button", { name: "Face", exact: true }).click();
@@ -144,7 +144,7 @@ test("extrudes actual geometry, orbits it and exports a nonempty 3D PNG", async 
   expect(errors).toEqual([]);
   await page.getByRole("button", { name: "2D", exact: true }).click();
   await expect(
-    page.getByRole("img", { name: "PLINKA", exact: true }),
+    page.getByRole("img", { name: "GLYPHKA", exact: true }),
   ).toBeVisible();
   await expect(scene).not.toBeVisible();
 });

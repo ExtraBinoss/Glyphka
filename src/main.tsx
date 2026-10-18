@@ -1,20 +1,15 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { LazyMotion, domAnimation, MotionConfig } from "motion/react";
-import "./i18n";
+import { createRoot, hydrateRoot } from "react-dom/client";
+import { prepareDrawerGestures } from "./lib/prepare-drawer";
 import "./styles/global.css";
 import "./styles/studio.css";
-import { App } from "./App";
-import { TooltipProvider } from "./components/ui/tooltip";
+import { WorkspaceRoot } from "./WorkspaceRoot";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <LazyMotion features={domAnimation}>
-      <MotionConfig reducedMotion="user">
-        <TooltipProvider delay={350}>
-          <App />
-        </TooltipProvider>
-      </MotionConfig>
-    </LazyMotion>
-  </StrictMode>,
-);
+prepareDrawerGestures();
+
+const container = document.getElementById("root")!;
+if (container.hasChildNodes())
+  hydrateRoot(container, <WorkspaceRoot />, { identifierPrefix: "glyphka-" });
+else
+  createRoot(container, { identifierPrefix: "glyphka-" }).render(
+    <WorkspaceRoot />,
+  );

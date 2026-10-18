@@ -3,11 +3,15 @@ import {
   BackSide,
   BufferAttribute,
   BufferGeometry,
+  Box3,
+  Vector3,
+  Quaternion,
   Color,
   DirectionalLight,
   Group,
   HemisphereLight,
   Mesh,
+  MOUSE,
   MeshBasicMaterial,
   MeshStandardMaterial,
   PerspectiveCamera,
@@ -28,6 +32,8 @@ import { PaintTexture } from "./paint-texture";
 import type { MeshData } from "@/engine/mesh-types";
 import { buildMesh, geometryKeys } from "@/engine/mesh-service";
 import { profiling, recordPerformance } from "./performance";
+import { perspectiveFitDistance } from "./perspective-fit";
+import { captureThreePng } from "./capture-three-png";
 type GeometryEntry = {
   children: Object3D[];
   outlines: Mesh[];
@@ -35,6 +41,8 @@ type GeometryEntry = {
   height: number;
   vertices: number;
   bytes: number;
+  depth: number;
+  corners: Vector3[];
 };
 
 export class ThreeStudio {
@@ -53,6 +61,7 @@ export class ThreeStudio {
   private serial = 0;
   private disposed = false;
   private preparing = false;
+  private compiled = false;
   private frame = 0;
   private lastTime = 0;
   private autoRotate = false;
@@ -69,13 +78,31 @@ export class ThreeStudio {
   private documentWidth = 1;
   private documentHeight = 1;
   private shadowKey = "";
+  private liveGeometryContext: string | null = null;
+  private displayedGeometrySerial = 0;
   private backgroundColor = new Color();
   private onReady: (error?: string) => void;
+  private displaced = false;
+  private zoomTarget = 1;
+  private meshDepth = 24;
+  private geometryCorners: Vector3[] = [];
+  private projectedCorners = Array.from({ length: 8 }, () => new Vector3());
+  private inverseCameraRotation = new Quaternion();
+  private cameraDirection = new Vector3();
+  private framingKey = "";
+  private panOffset = new Vector3();
+  private panAxis = new Vector3();
+  private document: {
+    design: Design;
+    mode: "wordmark" | "symbol" | "shapes";
+    selected: number;
+  } | null = null;
   constructor(
     private host: HTMLElement,
     settings: RenderSettings,
     onReady: (error?: string) => void,
     private environment: DataTexture,
+    private onDisplaced: (displaced: boolean) => void,
   ) {
     const start = performance.now();
     this.settings = settings;
@@ -121,10 +148,11 @@ export class ThreeStudio {
     this.floor.rotation.x = -Math.PI / 2;
     this.floor.receiveShadow = true;
     this.scene.add(this.floor);
-    this.camera.position.set(1.7, 1.1, 10);
+    this.camera.position.set(0, 0, 10);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.enableZoom = false;
+    this.controls.mouseButtons.MIDDLE = MOUSE.PAN;
     this.controls.dampingFactor = 0.09;
     this.controls.minDistance = 1.3;
     this.controls.maxDistance = 25;
@@ -144,12 +172,40 @@ export class ThreeStudio {
   get canvas() {
     return this.renderer.domElement;
   }
+  setPaint(paint: Paint) {
+    this.apply(this.settings, paint);
+  }
+  setRender(settings: RenderSettings, live = false) {
+    const document = this.document;
+    if (
+      document &&
+      (settings.depth !== this.settings.depth ||
+        settings.bevel !== this.settings.bevel)
+    ) {
+      this.update(
+        { ...document.design, render: settings },
+        document.mode,
+        document.selected,
+        this.paint,
+        live,
+      );
+    } else this.apply(settings, this.paint);
+  }
   update(
     design: Design,
     mode: "wordmark" | "symbol" | "shapes",
     selected: number,
     paint: Paint,
+    live = false,
   ) {
+    const context = JSON.stringify([
+      mode,
+      selected,
+      design.text,
+      design.family,
+    ]);
+    this.liveGeometryContext = live ? context : null;
+    this.document = { design, mode, selected };
     this.apply(design.render, paint);
     const { meshKey } = geometryKeys(design, mode, selected);
     if (meshKey === this.builtKey) return;
@@ -160,6 +216,7 @@ export class ThreeStudio {
     if (cached) {
       this.geometryCache.delete(meshKey);
       this.geometryCache.set(meshKey, cached);
+      this.displayedGeometrySerial = serial;
       this.activateGeometry(cached);
       this.prepareShaders(serial);
       return;
@@ -168,13 +225,26 @@ export class ThreeStudio {
     void buildMesh(design, mode, selected)
       .then((reply) => {
         recordPerformance("3d:mesh-request", start);
-        if (this.disposed || serial !== this.serial || !reply) return;
+        if (this.disposed || !reply || serial < this.displayedGeometrySerial)
+          return;
+        // While dragging, display the newest completed frame instead of starving
+        // the scene whenever the next pointer value arrives before its mesh.
+        if (serial !== this.serial && this.liveGeometryContext !== context)
+          return;
         if (reply.error) {
+          if (serial !== this.serial) return;
           delete this.host.dataset.pending;
           this.preparing = false;
           this.onReady(reply.error);
         } else if (reply.meshes) {
-          this.replaceGeometry(reply.meshes, reply.width!, reply.height!);
+          this.displayedGeometrySerial = serial;
+          this.replaceGeometry(
+            reply.meshes,
+            reply.width!,
+            reply.height!,
+            design.render.depth,
+            meshKey,
+          );
           this.prepareShaders(serial);
         }
       })
@@ -187,6 +257,15 @@ export class ThreeStudio {
       });
   }
   private prepareShaders(serial: number) {
+    // Every mesh has the same attributes and material programs. Swapping
+    // contours must not pause rendering for an already compiled shader.
+    if (this.compiled) {
+      delete this.host.dataset.pending;
+      this.preparing = false;
+      this.onReady();
+      this.invalidate();
+      return;
+    }
     const start = performance.now();
     this.preparing = true;
     void this.renderer
@@ -194,6 +273,7 @@ export class ThreeStudio {
       .then(() => {
         if (this.disposed || serial !== this.serial) return;
         this.preparing = false;
+        this.compiled = true;
         delete this.host.dataset.pending;
         recordPerformance("3d:compile", start);
         this.onReady();
@@ -220,10 +300,17 @@ export class ThreeStudio {
     }
   }
 
-  private replaceGeometry(meshes: MeshData[], width: number, height: number) {
+  private replaceGeometry(
+    meshes: MeshData[],
+    width: number,
+    height: number,
+    depth: number,
+    cacheKey: string,
+  ) {
     const start = performance.now();
     const children: Object3D[] = [],
       outlines: Mesh[] = [];
+    const bounds = new Box3();
     for (const data of meshes) {
       const geometry = new BufferGeometry();
       geometry.setAttribute("position", new BufferAttribute(data.positions, 3));
@@ -232,6 +319,8 @@ export class ThreeStudio {
       for (const group of data.groups)
         geometry.addGroup(group.start, group.count, group.materialIndex);
       geometry.computeBoundingSphere();
+      geometry.computeBoundingBox();
+      if (geometry.boundingBox) bounds.union(geometry.boundingBox);
       const mesh = new Mesh(geometry, [this.face, this.side]);
       mesh.castShadow = true;
       children.push(mesh);
@@ -251,8 +340,21 @@ export class ThreeStudio {
           n + m.positions.byteLength + m.normals.byteLength + m.uvs.byteLength,
         0,
       ),
+      depth,
+      corners: [-1, 1].flatMap((x) =>
+        [-1, 1].flatMap((y) =>
+          [-1, 1].map(
+            (z) =>
+              new Vector3(
+                x < 0 ? bounds.min.x : bounds.max.x,
+                y < 0 ? bounds.min.y : bounds.max.y,
+                z < 0 ? bounds.min.z : bounds.max.z,
+              ),
+          ),
+        ),
+      ),
     };
-    this.geometryCache.set(this.builtKey, entry);
+    this.geometryCache.set(cacheKey, entry);
     this.activateGeometry(entry);
     let total = [...this.geometryCache.values()].reduce(
       (n, e) => n + e.bytes,
@@ -281,6 +383,9 @@ export class ThreeStudio {
     for (const child of [...this.logo.children]) this.logo.remove(child);
     this.logo.add(...entry.children);
     this.outlines = entry.outlines;
+    this.meshDepth = entry.depth;
+    this.geometryCorners = entry.corners;
+    this.framingKey = "";
     this.host.dataset.vertices = String(entry.vertices);
     this.host.dataset.revision = String(
       Number(this.host.dataset.revision ?? 0) + 1,
@@ -341,12 +446,28 @@ export class ThreeStudio {
       (settings.rotationY * Math.PI) / 180,
       (settings.rotationZ * Math.PI) / 180,
     );
+    // Show extrusion depth immediately while the worker prepares exact bevels.
+    this.logo.scale.z = settings.depth / this.meshDepth;
+    const framingKey = [
+      settings.rotationX,
+      settings.rotationY,
+      settings.rotationZ,
+      settings.depth,
+      settings.outline,
+    ].join(":");
+    if (framingKey !== this.framingKey) {
+      this.framingKey = framingKey;
+      this.fitCamera();
+    }
     this.autoRotate = settings.autoRotate;
     this.controls.autoRotate = this.autoRotate;
+    this.controls.autoRotateSpeed = settings.autoRotateSpeed;
     this.backgroundColor.set(settings.background);
     this.scene.background = settings.transparent ? null : this.backgroundColor;
     const shadowKey = JSON.stringify([
       settings.rotationX,
+      settings.depth,
+      settings.bevel,
       settings.rotationY,
       settings.rotationZ,
       settings.elevation,
@@ -362,9 +483,40 @@ export class ThreeStudio {
     this.host.dataset.paint = paint.gradient
       ? JSON.stringify(paint.gradient)
       : paint.color;
+    this.host.dataset.background = settings.transparent
+      ? "transparent"
+      : settings.background;
+    this.host.dataset.rotationSpeed = String(settings.autoRotateSpeed);
     this.invalidate();
     recordPerformance("3d:paint", start);
   }
+  private fitCamera() {
+    if (!this.geometryCorners.length) return;
+    this.logo.updateMatrix();
+    this.inverseCameraRotation.copy(this.camera.quaternion).invert();
+    const outlineScale = 1 + this.settings.outline * 0.009;
+    for (let i = 0; i < this.geometryCorners.length; i++) {
+      this.projectedCorners[i]
+        .copy(this.geometryCorners[i])
+        .multiplyScalar(outlineScale)
+        .applyMatrix4(this.logo.matrix)
+        .applyQuaternion(this.inverseCameraRotation);
+    }
+    const distance = perspectiveFitDistance(
+      this.projectedCorners,
+      this.camera.fov,
+      this.camera.aspect,
+    );
+    this.controls.maxDistance = Math.max(25, distance * 3);
+    this.cameraDirection
+      .subVectors(this.camera.position, this.controls.target)
+      .normalize();
+    this.camera.position
+      .copy(this.controls.target)
+      .addScaledVector(this.cameraDirection, distance);
+    this.controls.update();
+  }
+
   private resize() {
     if (!this.enabled) return;
     // Layout dimensions ignore the entrance transform; a scale tween must not
@@ -378,6 +530,7 @@ export class ThreeStudio {
     this.renderer.setSize(width, height);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.fitCamera();
     this.invalidate();
   }
   private visibility = () => {
@@ -399,7 +552,20 @@ export class ThreeStudio {
       ? Math.min(0.05, (time - this.lastTime) / 1000)
       : 1 / 60;
     this.lastTime = time;
+    const zooming = Math.abs(this.camera.zoom - this.zoomTarget) > 0.0001;
+    if (zooming) {
+      this.camera.zoom +=
+        (this.zoomTarget - this.camera.zoom) * (1 - Math.exp(-18 * delta));
+      if (Math.abs(this.camera.zoom - this.zoomTarget) < 0.0001)
+        this.camera.zoom = this.zoomTarget;
+      this.camera.updateProjectionMatrix();
+    }
     const moving = this.controls.update(delta);
+    const displaced = this.controls.target.lengthSq() > 2.25;
+    if (displaced !== this.displaced) {
+      this.displaced = displaced;
+      this.onDisplaced(displaced);
+    }
     const start = performance.now();
     this.renderer.render(this.scene, this.camera);
     recordPerformance("3d:frame-cpu", start);
@@ -407,43 +573,79 @@ export class ThreeStudio {
       this.host.dataset.frames = String(
         Number(this.host.dataset.frames ?? 0) + 1,
       );
-    if (moving || this.autoRotate) this.invalidate();
+    if (moving || this.autoRotate || zooming) this.invalidate();
     else this.lastTime = 0;
   };
   reset() {
+    this.zoomTarget = 1;
     this.camera.zoom = 1;
     this.camera.updateProjectionMatrix();
     this.controls.reset();
+    this.fitCamera();
     this.invalidate();
   }
-  zoom(percent: number) {
-    this.camera.zoom = percent / 100;
-    this.camera.updateProjectionMatrix();
+  recenter() {
+    const damping = this.controls.enableDamping,
+      autoRotate = this.controls.autoRotate;
+    this.controls.enableDamping = false;
+    this.controls.autoRotate = false;
+    this.controls.update();
+    this.camera.position.sub(this.controls.target);
+    this.controls.target.set(0, 0, 0);
+    this.controls.update();
+    this.controls.enableDamping = damping;
+    this.controls.autoRotate = autoRotate;
+    this.displaced = false;
+    this.onDisplaced(false);
+    this.invalidate();
+  }
+  panMode(enabled: boolean) {
+    this.controls.mouseButtons.LEFT = enabled ? MOUSE.PAN : MOUSE.ROTATE;
+  }
+  pan(x: number, y: number) {
+    const distance = this.camera.position.distanceTo(this.controls.target);
+    const units =
+      (2 * distance * Math.tan((this.camera.fov * Math.PI) / 360)) /
+      (this.height * this.camera.zoom);
+    this.panOffset
+      .setFromMatrixColumn(this.camera.matrix, 0)
+      .multiplyScalar(-x * units);
+    this.panAxis
+      .setFromMatrixColumn(this.camera.matrix, 1)
+      .multiplyScalar(y * units);
+    this.panOffset.add(this.panAxis);
+    this.camera.position.add(this.panOffset);
+    this.controls.target.add(this.panOffset);
+    this.controls.update();
+    this.invalidate();
+  }
+  zoom(percent: number, immediate = false) {
+    this.zoomTarget = percent / 100;
+    if (
+      immediate ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      this.camera.zoom = this.zoomTarget;
+      this.camera.updateProjectionMatrix();
+    }
     this.invalidate();
   }
   view(front: boolean) {
-    if (front) {
-      this.camera.position.set(0, 0, 10);
-      this.controls.target.set(0, 0, 0);
-      this.controls.update();
-    } else this.reset();
+    this.camera.position.set(front ? 0 : 1.7, front ? 0 : 1.1, 10);
+    this.controls.target.set(0, 0, 0);
+    this.controls.update();
+    this.fitCamera();
     this.invalidate();
   }
   async png(): Promise<Blob> {
-    const pixelRatio = this.renderer.getPixelRatio();
-    this.renderer.setPixelRatio(2);
-    this.renderer.setSize(this.width, this.height, false);
-    this.renderer.render(this.scene, this.camera);
-    const result = await new Promise<Blob>((resolve, reject) =>
-      this.canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error("PNG unavailable"))),
-        "image/png",
-      ),
-    );
-    this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.setSize(this.width, this.height);
-    this.invalidate();
-    return result;
+    return captureThreePng({
+      renderer: this.renderer,
+      canvas: this.canvas,
+      viewport: () => ({ width: this.width, height: this.height }),
+      render: () => this.renderer.render(this.scene, this.camera),
+      isDisposed: () => this.disposed,
+      invalidate: this.invalidate,
+    });
   }
   dispose() {
     this.disposed = true;

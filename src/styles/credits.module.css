@@ -1,0 +1,132 @@
+.dialog {
+  width: min(560px, calc(100% - 32px));
+  max-width: none;
+  max-height: min(720px, calc(100dvh - 32px));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 20px;
+  overflow: hidden;
+  padding: 28px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--popover) 92%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-popover);
+}
+.dialog .header {
+  gap: 8px;
+  padding-right: 32px;
+}
+.dialog .title {
+  font: 500 24px/1.2 var(--font-heading);
+  letter-spacing: -0.9px;
+}
+.dialog .body {
+  min-height: 0;
+  max-height: none;
+  padding: 2px 12px 4px 2px;
+  border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+}
+.credits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.credits > li {
+  padding: 15px 0;
+  border-bottom: 1px solid var(--border);
+}
+.credits > li:first-child {
+  padding-top: 0;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.heading h3,
+.tools h3 {
+  font: 500 15px/1.4 var(--font-sans);
+}
+.credits p,
+.note {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.license {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.dialog a {
+  border-radius: 3px;
+  text-underline-offset: 3px;
+}
+.dialog a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.tools {
+  padding: 18px 0;
+}
+.tools ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.dialog .footer {
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+@media (max-width: 480px) {
+  .dialog {
+    padding: 22px;
+    gap: 18px;
+    border-radius: 20px;
+  }
+  .dialog .title {
+    font-size: 22px;
+  }
+}
+.section + .section {
+  margin-top: 24px;
+}
+.section > h3 {
+  font: 500 17px/1.4 var(--font-heading);
+  margin-bottom: 10px;
+}
+.section > p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.section > p + .credits {
+  margin-top: 16px;
+}
+.credits h4 {
+  font: 500 14px/1.5 var(--font-sans);
+  margin-bottom: 4px;
+}
+.reference {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.dialog .body {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}

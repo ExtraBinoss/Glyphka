@@ -1,4 +1,4 @@
-import { memo, useId, useState, type ReactNode } from "react";
+import { memo, useId, useMemo, useState, type ReactNode } from "react";
 import { buildDrawing, shapePath, type Mark } from "@/engine/geometry";
 import type { Design, Shape } from "@/engine/model";
 import type { Paint as PaintValue } from "@/state/studio";
@@ -10,44 +10,64 @@ function Unpainted({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function StaticGroup({
+  children,
+  transform,
+  className,
+}: {
+  children?: ReactNode;
+  transform: string;
+  className?: string;
+}) {
+  return (
+    <g transform={transform} className={className}>
+      {children}
+    </g>
+  );
+}
+
 function Marks({
   marks,
   color,
   roundness,
   painted = false,
+  morph = true,
 }: {
   marks: Mark[];
   color: string;
   roundness: number;
   painted?: boolean;
+  morph?: boolean;
 }) {
-  return (
-    <AnimatePresence initial={false}>
-      {marks.map((mark, index) => (
-        <MorphPath
-          key={`${index}-${mark.stroke ? "stroke" : "fill"}`}
-          d={mark.d}
-          transform={mark.transform}
-          fill={mark.stroke ? "none" : color}
-          stroke={mark.stroke ? color : undefined}
-          style={
-            painted
-              ? {
-                  fill: mark.stroke ? "none" : "var(--glyph-paint)",
-                  stroke: mark.stroke ? "var(--glyph-paint)" : undefined,
-                }
-              : undefined
-          }
-          strokeWidth={mark.stroke}
-          strokeLinecap={
-            roundness > 45 ? "round" : roundness > 0 ? "square" : "butt"
-          }
-          strokeLinejoin={
-            roundness > 45 ? "round" : roundness > 0 ? "bevel" : "miter"
-          }
-        />
-      ))}
-    </AnimatePresence>
+  const Path = morph ? MorphPath : "path";
+  const paths = marks.map((mark, index) => (
+    <Path
+      key={`${index}-${mark.stroke ? "stroke" : "fill"}`}
+      d={mark.d}
+      transform={mark.transform}
+      fill={mark.stroke ? "none" : color}
+      stroke={mark.stroke ? color : undefined}
+      style={
+        painted
+          ? {
+              fill: mark.stroke ? "none" : "var(--glyph-paint)",
+              stroke: mark.stroke ? "var(--glyph-paint)" : undefined,
+            }
+          : undefined
+      }
+      strokeWidth={mark.stroke}
+      strokeLinecap={
+        roundness > 45 ? "round" : roundness > 0 ? "square" : "butt"
+      }
+      strokeLinejoin={
+        roundness > 45 ? "round" : roundness > 0 ? "bevel" : "miter"
+      }
+    />
+  ));
+  return morph ? (
+    <AnimatePresence initial={false}>{paths}</AnimatePresence>
+  ) : (
+    <>{paths}</>
   );
 }
 export const Lettering = memo(function Lettering({
@@ -59,6 +79,7 @@ export const Lettering = memo(function Lettering({
   label = "Wordmark",
   livePaint = false,
   paint,
+  morph = true,
 }: {
   design: Design;
   ink?: string;
@@ -69,13 +90,19 @@ export const Lettering = memo(function Lettering({
   label?: string;
   livePaint?: boolean;
   paint?: PaintValue;
+  morph?: boolean;
 }) {
-  const drawing = buildDrawing(design, singleIndex),
+  const drawing = useMemo(
+      () => buildDrawing(design, singleIndex),
+      [design, singleIndex],
+    ),
     id = useId().replaceAll(":", "");
   const Paint = livePaint || paint ? SvgPaint : Unpainted;
+  const Svg = morph ? MorphSvg : "svg";
+  const Group = morph ? MorphGroup : StaticGroup;
   const [hovered, setHovered] = useState<number | null>(null);
   return (
-    <MorphSvg
+    <Svg
       viewBox={`0 0 ${drawing.width} ${drawing.height}`}
       role="img"
       aria-label={label}
@@ -109,14 +136,14 @@ export const Lettering = memo(function Lettering({
           const cuts = glyph.marks.filter((mark) => mark.cutout),
             positive = glyph.marks.filter((mark) => !mark.cutout);
           return (
-            <MorphGroup
+            <Group
               key={glyph.index}
               transform={glyph.transform}
               className="glyph-shape"
               animate={{
                 opacity: hovered === null || hovered === glyph.index ? 1 : 0.22,
               }}
-              transition={{ duration: 0.16 }}
+              transition={{ duration: hovered === null ? 0.08 : 0.12 }}
               onClick={onSelect ? () => onSelect(glyph.index) : undefined}
             >
               {cuts.length > 0 && (
@@ -137,6 +164,7 @@ export const Lettering = memo(function Lettering({
                       fill="white"
                     />
                     <Marks
+                      morph={morph}
                       marks={cuts}
                       color="black"
                       roundness={design.roundness}
@@ -146,13 +174,14 @@ export const Lettering = memo(function Lettering({
               )}
               <g mask={cuts.length ? `url(#${id}-${i})` : undefined}>
                 <Marks
+                  morph={morph}
                   marks={positive}
                   color={ink}
                   roundness={design.roundness}
                   painted={livePaint || !!paint}
                 />
               </g>
-            </MorphGroup>
+            </Group>
           );
         })}
       </Paint>
@@ -162,7 +191,12 @@ export const Lettering = memo(function Lettering({
             key={glyph.index}
             transform={glyph.transform}
             className="interactive-glyph"
+            onPointerDown={(event) => {
+              if (event.button === 0) event.preventDefault();
+            }}
             onPointerEnter={() => setHovered(glyph.index)}
+            onPointerLeave={() => setHovered(null)}
+            onPointerCancel={() => setHovered(null)}
             onFocus={() => setHovered(glyph.index)}
             onBlur={() => setHovered(null)}
             tabIndex={0}
@@ -189,7 +223,7 @@ export const Lettering = memo(function Lettering({
             </>
           </MorphGroup>
         ))}
-    </MorphSvg>
+    </Svg>
   );
 });
 export function ShapeMark({

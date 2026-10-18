@@ -1,0 +1,329 @@
+/* Register before the first interaction; these values only affect the popup. */
+@property --drawer-height {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --drawer-frontmost-height {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --nested-drawers {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --drawer-swipe-movement-x {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --drawer-swipe-movement-y {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --drawer-snap-point-offset {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --drawer-swipe-progress {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --drawer-swipe-strength {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+.drawer-viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+.drawer-viewport[hidden] {
+  display: block;
+  visibility: hidden;
+}
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(0 0 0 / 30%);
+  backdrop-filter: blur(4px);
+  opacity: calc(1 - var(--drawer-swipe-progress));
+  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.drawer-overlay[data-starting-style],
+.drawer-overlay[data-ending-style] {
+  opacity: 0;
+}
+.drawer-overlay[data-ending-style] {
+  pointer-events: none;
+}
+.drawer-overlay[data-swiping] {
+  transition-duration: 0ms;
+}
+.drawer-popup {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  pointer-events: auto;
+  border: 0;
+  color: var(--popover-foreground);
+  background: transparent;
+  outline: none;
+  will-change: transform;
+  transform: translate3d(
+    0,
+    calc(var(--drawer-snap-point-offset) + var(--drawer-swipe-movement-y)),
+    0
+  );
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* A closed inspector stays laid out, so opening never builds its controls. */
+.drawer-popup[hidden] {
+  display: flex;
+  visibility: hidden;
+  pointer-events: none;
+}
+.drawer-popup[hidden],
+.drawer-popup[data-starting-style],
+.drawer-popup[data-ending-style] {
+  transform: translate3d(0, calc(100% + 2px), 0);
+}
+.drawer-popup[data-swiping] {
+  transition-duration: 0ms;
+}
+.drawer-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.drawer-handle {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  justify-content: center;
+  cursor: grab;
+}
+.drawer-handle::after {
+  content: "";
+  display: block;
+  border-radius: 999px;
+}
+.drawer-handle:active {
+  cursor: grabbing;
+}
+body {
+  position: relative;
+}
+.properties-sheet {
+  --drawer-inset: 0px;
+  --drawer-content-height: min(82dvh, 760px);
+  --drawer-content-max-height: calc(
+    100dvh - env(safe-area-inset-top, 0px) - 8px
+  );
+  height: min(82dvh, 760px);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8px);
+  margin: 0;
+  border-radius: 24px 24px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition-property: transform;
+  contain: layout style;
+}
+.properties-sheet [data-slot="drawer-swipe-handle"] {
+  height: 44px;
+  min-height: 44px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  align-items: center;
+  touch-action: none;
+}
+.properties-sheet [data-slot="drawer-swipe-handle"]::after {
+  width: 44px;
+  height: 5px;
+  background: var(--muted-foreground);
+  opacity: 0.35;
+}
+.properties-sheet [data-inspector] {
+  position: relative;
+  inset: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  transform: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.properties-sheet .panel-close {
+  display: none;
+}
+.properties-sheet [data-inspector] > :last-child {
+  min-height: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="drawer-popup"],
+  [data-slot="drawer-overlay"] {
+    transition-duration: 0ms !important;
+  }
+}
+
+.properties-sheet [data-slot="drawer-content"] {
+  min-height: 0;
+}
+@media (max-width: 900px) and (prefers-reduced-transparency: reduce) {
+  .properties-sheet {
+    backdrop-filter: none;
+    background: var(--popover);
+  }
+}
+
+.mobile-inspector-dock {
+  position: fixed;
+  z-index: 26;
+  left: 50%;
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+}
+.mobile-inspector-trigger {
+  width: 132px;
+  height: 44px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--popover) 88%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 5%);
+  touch-action: pan-x;
+}
+.mobile-inspector-trigger > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+.mobile-inspector-trigger svg {
+  width: 15px;
+  height: 15px;
+}
+.mobile-inspector-trigger:active,
+.mobile-inspector-dock[data-swiping] .mobile-inspector-trigger {
+  background: var(--accent);
+}
+.properties-sheet [data-slot="drawer-swipe-handle"]::after {
+  transition:
+    background 150ms,
+    opacity 150ms,
+    transform 150ms;
+}
+.properties-sheet [data-slot="drawer-swipe-handle"]:active::after,
+.properties-sheet[data-swiping] [data-slot="drawer-swipe-handle"]::after {
+  background: var(--primary);
+  opacity: 1;
+  transform: scaleX(1.25);
+}
+
+.properties-sheet [data-slot="drawer-swipe-handle"]:focus-visible {
+  outline: none;
+}
+.properties-sheet [data-slot="drawer-swipe-handle"]:focus-visible::after {
+  background: var(--primary);
+  opacity: 1;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+[data-inspector] {
+  --selection-background: color-mix(
+    in srgb,
+    var(--foreground) 9%,
+    var(--background)
+  );
+  --selection-border: color-mix(
+    in srgb,
+    var(--foreground) 30%,
+    var(--background)
+  );
+}
+[data-inspector] [data-slot="segmented-indicator"] {
+  background: var(--selection-background);
+  box-shadow: none;
+}
+[data-inspector] [data-slot="toggle-group-item"][aria-pressed="true"] {
+  color: var(--foreground);
+}
+
+.properties-sheet[data-swiping] {
+  transition-duration: 0ms;
+}
+.properties-sheet [data-slot="drawer-content"] {
+  contain: layout style;
+}
+
+@layer base {
+  /* Tailwind preflight hides [hidden] with !important. Keep layout warm only here. */
+  .drawer-viewport[hidden] {
+    display: block !important;
+  }
+  .drawer-popup[hidden] {
+    display: flex !important;
+  }
+}
+
+.drawer-surface {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  border: 1px solid var(--border);
+  background: var(--popover);
+  box-shadow: 0 -8px 32px rgb(0 0 0 / 12%);
+}
+.properties-sheet[data-adjusting="true"] [data-peek-path] {
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+  backdrop-filter: none;
+}
+.properties-sheet [data-peek-muted] {
+  pointer-events: none;
+}
+.properties-sheet [data-peek-active] {
+  position: relative;
+  isolation: isolate;
+}
+.properties-sheet [data-peek-active]::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -8px -12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--popover);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 12%);
+  pointer-events: none;
+}

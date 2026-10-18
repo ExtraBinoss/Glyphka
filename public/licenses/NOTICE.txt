@@ -2,12 +2,28 @@ Glyphka
 
 A generative lettering and symbol studio by Plinka.
 
+Glyphka's original source code is released under the MIT License.
+Copyright (c) 2026 ExtraBinoss. See /licenses/Glyphka-MIT.txt and LICENSE.md.
+Third-party software, fonts and assets retain their original licenses below.
+
 Inspiration: Paul Nicholson's geometric constructions and lettering for
 Aphex Twin. The associated lettering is known as Xylem. Glyphka uses an
 original code-generated alphabet and procedural geometry.
 
 Reference: https://www.monotype.com/resources/special-aphex-twin-logo
 Reference: https://www.factmag.com/2017/02/21/aphex-twin-logo-designer-paul-nicholson-shares-blueprints-iconic-design/
+
+Methods:
+The alphabet is assembled from original parametric SVG primitives and seeded
+variation. Procedural shapes include radial contours, polygons, stars and a
+parameterized implementation of Johan Gielis's superformula.
+Reference: Johan Gielis (2003), A generic geometric transformation that unifies
+a wide range of natural and abstract shapes, American Journal of Botany 90(3).
+https://doi.org/10.3732/ajb.90.3.333
+
+SVG morphing uses svgpath normalization and d3-interpolate-path interpolation.
+Clipper performs contour unions and differences; Three.js extrudes the contours
+in a worker into beveled meshes. Reusable geometry is cached.
 
 Third-party software:
 ReUI color picker — MIT (ReUI-LICENSE.txt)
@@ -19,4 +35,9 @@ Source: https://github.com/TheAleSch/amplo-picker
 Culori color conversions — MIT (Culori-LICENSE.txt)
 d3-interpolate-path — BSD-3-Clause (d3-interpolate-path-LICENSE.txt)
 svgpath — MIT (svgpath-LICENSE.txt)
+Source Sans 3 — SIL Open Font License 1.1 (Source-Sans-3-OFL.txt)
+Space Grotesk — SIL Open Font License 1.1 (Space-Grotesk-OFL.txt)
+Class Variance Authority — Apache-2.0 (CVA-Apache-2.0.txt)
+Lucide — ISC (Lucide-ISC.txt)
+GitHub Octicons mark — MIT (Octicons-MIT.txt)
 The baked studio lighting is generated from Three.js RoomEnvironment.

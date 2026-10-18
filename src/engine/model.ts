@@ -15,6 +15,14 @@ export const FAMILIES = [
   "lunar",
   "neon",
   "fold",
+  "duplex",
+  "segmented",
+  "notched",
+  "woven",
+  "prism",
+  "terminal",
+  "raster",
+  "crosscut",
 ] as const;
 export type Family = (typeof FAMILIES)[number];
 export type Mode = "wordmark" | "symbol" | "shapes" | "about";
@@ -84,6 +92,7 @@ export interface RenderSettings {
   rotationY: number;
   rotationZ: number;
   autoRotate: boolean;
+  autoRotateSpeed: number;
   background: string;
   transparent: boolean;
 }
@@ -106,6 +115,7 @@ export const DEFAULT_RENDER: RenderSettings = {
   rotationY: 0,
   rotationZ: 0,
   autoRotate: false,
+  autoRotateSpeed: 0.75,
   background: "#f6f7fb",
   transparent: true,
 };
@@ -127,7 +137,7 @@ export interface Design {
   render: RenderSettings;
 }
 export const DEFAULT_DESIGN: Design = {
-  text: "PLINKA",
+  text: "GLYPHKA",
   family: "signal",
   weight: 23,
   roundness: 90,
@@ -344,6 +354,86 @@ export const PRESETS: Record<Family, Partial<Design>> = {
     cutouts: 58,
     mutation: 12,
   },
+  duplex: {
+    family: "duplex",
+    weight: 28,
+    roundness: 90,
+    width: 106,
+    slant: -5,
+    tracking: 15,
+    cutouts: 0,
+    mutation: 0,
+  },
+  segmented: {
+    family: "segmented",
+    weight: 25,
+    roundness: 18,
+    width: 102,
+    slant: 0,
+    tracking: 17,
+    cutouts: 0,
+    mutation: 0,
+  },
+  notched: {
+    family: "notched",
+    weight: 30,
+    roundness: 10,
+    width: 98,
+    slant: -6,
+    tracking: 15,
+    cutouts: 0,
+    mutation: 0,
+  },
+  woven: {
+    family: "woven",
+    weight: 28,
+    roundness: 80,
+    width: 108,
+    slant: -8,
+    tracking: 16,
+    cutouts: 0,
+    mutation: 0,
+  },
+  prism: {
+    family: "prism",
+    weight: 26,
+    roundness: 0,
+    width: 96,
+    slant: -12,
+    tracking: 18,
+    cutouts: 0,
+    mutation: 0,
+  },
+  terminal: {
+    family: "terminal",
+    weight: 16,
+    roundness: 100,
+    width: 105,
+    slant: 0,
+    tracking: 22,
+    cutouts: 0,
+    mutation: 0,
+  },
+  raster: {
+    family: "raster",
+    weight: 30,
+    roundness: 30,
+    width: 108,
+    slant: -3,
+    tracking: 16,
+    cutouts: 0,
+    mutation: 0,
+  },
+  crosscut: {
+    family: "crosscut",
+    weight: 29,
+    roundness: 65,
+    width: 102,
+    slant: 7,
+    tracking: 18,
+    cutouts: 0,
+    mutation: 0,
+  },
 };
 export const LIMITS = {
   weight: [10, 34],
@@ -457,6 +547,7 @@ export function validateDesign(raw: unknown): Design {
       rotationX: [-180, 180],
       rotationY: [-180, 180],
       rotationZ: [-180, 180],
+      autoRotateSpeed: [0.1, 5],
     } as const;
     for (const key of Object.keys(ranges) as (keyof typeof ranges)[])
       result.render[key] = finite(

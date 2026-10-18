@@ -2,14 +2,16 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import {
   beginGestureAtom,
-  designAtom,
-  editAtom,
+  inspectorRenderSettingsAtom,
+  previewRenderAtom,
+  commitRenderAtom,
   endGestureAtom,
   threeApiAtom,
 } from "@/state/studio";
 import { DEFAULT_RENDER, type RenderSettings } from "@/engine/model";
 import { RangeField } from "./RangeField";
 import { ColorPicker, ColorPickerPanel } from "./ui/color-picker";
+import { useColorPickerI18n } from "./useColorPickerI18n";
 import {
   Popover,
   PopoverContent,
@@ -18,6 +20,7 @@ import {
 } from "./ui/popover";
 import { Button } from "./ui/button";
 import { ButtonGroup } from "./ui/button-group";
+import { AnimatePresence, m } from "motion/react";
 import {
   Accordion,
   AccordionContent,
@@ -35,13 +38,18 @@ function RenderColor({
   onChange: (color: string) => void;
 }) {
   const begin = useSetAtom(beginGestureAtom),
-    end = useSetAtom(endGestureAtom);
+    end = useSetAtom(endGestureAtom),
+    commit = useSetAtom(commitRenderAtom),
+    pickerI18n = useColorPickerI18n();
   return (
     <div className="render-color">
       <span>{label}</span>
       <Popover
         onOpenChange={(open) => {
-          if (!open) end();
+          if (!open) {
+            commit();
+            end();
+          }
         }}
       >
         <PopoverTrigger
@@ -62,13 +70,17 @@ function RenderColor({
             value={value}
             format="hex"
             alpha={false}
+            i18n={pickerI18n}
             onValueChange={(color) => {
               if (color && /^#[\da-f]{6}$/i.test(color)) {
                 begin();
                 onChange(color);
               }
             }}
-            onValueCommit={() => end()}
+            onValueCommit={() => {
+              commit();
+              end();
+            }}
           >
             <ColorPickerPanel />
           </ColorPicker>
@@ -102,12 +114,14 @@ function ToggleRow({
 }
 export function RenderProperties() {
   const { t } = useTranslation(),
-    design = useAtomValue(designAtom),
-    edit = useSetAtom(editAtom),
-    api = useAtomValue(threeApiAtom),
-    r = design.render;
-  const update = (patch: Partial<RenderSettings>) =>
-    edit({ render: { ...r, ...patch } });
+    r = useAtomValue(inspectorRenderSettingsAtom),
+    preview = useSetAtom(previewRenderAtom),
+    commit = useSetAtom(commitRenderAtom),
+    api = useAtomValue(threeApiAtom);
+  const update = (patch: Partial<RenderSettings>) => {
+    preview(patch);
+    commit();
+  };
   const field = (
     key: keyof RenderSettings,
     min: number,
@@ -124,7 +138,8 @@ export function RenderProperties() {
       step={step}
       unit={unit}
       initial={DEFAULT_RENDER[key] as number}
-      onChange={(value) => update({ [key]: value })}
+      onChange={(value) => preview({ [key]: value })}
+      onCommit={() => commit()}
     />
   );
   return (
@@ -160,6 +175,20 @@ export function RenderProperties() {
           value={r.autoRotate}
           onChange={(autoRotate) => update({ autoRotate })}
         />
+        <AnimatePresence initial={false}>
+          {r.autoRotate && (
+            <m.div
+              layout="position"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+              style={{ overflow: "hidden" }}
+            >
+              {field("autoRotateSpeed", 0.1, 5, 0.05, "×")}
+            </m.div>
+          )}
+        </AnimatePresence>
         <p className="micro muted">{t("orbitHint")}</p>
       </section>
       <Accordion
@@ -215,14 +244,14 @@ export function RenderProperties() {
                 <RenderColor
                   label={t("sideColor")}
                   value={r.sideColor}
-                  onChange={(sideColor) => update({ sideColor })}
+                  onChange={(sideColor) => preview({ sideColor })}
                 />
               )}
               {field("outline", 0, 5, 0.1)}
               <RenderColor
                 label={t("outlineColor")}
                 value={r.outlineColor}
-                onChange={(outlineColor) => update({ outlineColor })}
+                onChange={(outlineColor) => preview({ outlineColor })}
               />
             </div>
           </AccordionContent>
@@ -246,7 +275,7 @@ export function RenderProperties() {
                 <RenderColor
                   label={t("background")}
                   value={r.background}
-                  onChange={(background) => update({ background })}
+                  onChange={(background) => preview({ background })}
                 />
               )}
             </div>

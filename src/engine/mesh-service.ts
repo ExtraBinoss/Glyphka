@@ -108,6 +108,12 @@ export function buildMesh(
   priority = true,
 ): Promise<GeometryReply | null> {
   const { key, meshKey } = geometryKeys(design, mode, selected);
+  // A new visible target supersedes pending visible targets, including when
+  // its mesh is already cached or waiting in the background warmup queue.
+  if (priority)
+    for (let i = queue.length - 1; i >= 0; i--)
+      if (queue[i].priority && queue[i].meshKey !== meshKey)
+        queue.splice(i, 1)[0].resolve(null);
   const cached = cache.get(meshKey);
   if (cached) {
     cache.delete(meshKey);
@@ -124,9 +130,6 @@ export function buildMesh(
     }
     return existing.promise;
   }
-  if (priority)
-    for (let i = queue.length - 1; i >= 0; i--)
-      if (queue[i].priority) queue.splice(i, 1)[0].resolve(null);
   let resolve!: Job["resolve"];
   const promise = new Promise<GeometryReply | null>((done) => {
     resolve = done;

@@ -92,3 +92,53 @@ export function generateComposition(seed: number): Shape[] {
   }
   return shapes;
 }
+
+// Original procedural constructions: seeded, reproducible and independent of the UI.
+// Balanced families keep each new batch varied instead of producing only blobs.
+export function generateShapeCandidates(seed: number, count = 18): Shape[] {
+  const rng = random(seed);
+  const kinds: ShapeKind[] = [
+    "superformula",
+    "star",
+    "blob",
+    "clover",
+    "rosette",
+    "scallop",
+    "polygon",
+    "spiral",
+    "wave",
+    "cross",
+    "arrow",
+    "chevron",
+    "capsule",
+    "ring",
+    "arc",
+    "teardrop",
+    "moon",
+    "heart",
+  ];
+  for (let i = kinds.length - 1; i > 1; i--) {
+    const j = 1 + Math.floor(rng() * i);
+    [kinds[i], kinds[j]] = [kinds[j], kinds[i]];
+  }
+  return Array.from(
+    { length: Math.max(0, Math.min(72, Math.floor(count))) },
+    (_, i) => ({
+      id: `generated-${seed}-${i}`,
+      kind: kinds[i % kinds.length],
+      x: 300,
+      y: 220,
+      width: Math.round(120 + rng() * 130),
+      height: Math.round(120 + rng() * 130),
+      rotation: 0,
+      cutout: false,
+      seed: Math.floor(rng() * 2147483647),
+      points: 3 + Math.floor(rng() * 10),
+      inner: 0.18 + rng() * 0.57,
+      tension: 0.65 + rng() * 4.5,
+      twist: Math.round(-70 + rng() * 140),
+      irregularity: rng() * 0.3,
+      thickness: 0.12 + rng() * 0.25,
+    }),
+  );
+}

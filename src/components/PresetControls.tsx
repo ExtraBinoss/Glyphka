@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
-import { Save, Plus, Trash2 } from "lucide-react";
+import { Save, Plus, Trash2, Check } from "lucide-react";
 import {
   presetsAtom,
   savePresetAtom,
   deletePresetAtom,
   loadPresetAtom,
   PRESET_LIMIT,
+  activePresetIdAtom,
+  previewPresetAtom,
 } from "@/state/presets";
-import { previewDesignAtom } from "@/state/studio";
+import { preloadThree } from "@/lib/preload-three";
+import { buildMesh } from "@/engine/mesh-service";
 import { serializeSvg } from "@/engine/geometry";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -24,12 +27,34 @@ import {
 export function PresetControls() {
   const { t } = useTranslation(),
     presets = useAtomValue(presetsAtom),
+    active = useAtomValue(activePresetIdAtom),
     save = useSetAtom(savePresetAtom),
     remove = useSetAtom(deletePresetAtom),
     load = useSetAtom(loadPresetAtom),
-    preview = useSetAtom(previewDesignAtom);
+    preview = useSetAtom(previewPresetAtom);
   const [name, setName] = useState(""),
     [open, setOpen] = useState(false);
+  const thumbnails = useMemo(
+    () =>
+      presets.map((preset) => ({
+        preset,
+        src: `data:image/svg+xml,${encodeURIComponent(serializeSvg(preset.design, preset.mode, preset.design.color === "auto" ? "#202124" : preset.design.color, preset.selected))}`,
+      })),
+    [presets],
+  );
+  useEffect(() => {
+    if (!open || !presets.some((preset) => preset.view === "3d")) return;
+    startTransition(preloadThree);
+    for (const preset of presets)
+      if (preset.view === "3d")
+        void buildMesh(
+          preset.design,
+          preset.mode,
+          preset.selected,
+          false,
+        ).catch(() => {});
+  }, [open, presets]);
+  useEffect(() => () => preview(null), [preview]);
   return (
     <Popover
       open={open}
@@ -63,7 +88,11 @@ export function PresetControls() {
             placeholder={t("presetName")}
             value={name}
             maxLength={40}
-            onChange={(e) => setName(e.target.value)}
+            onFocus={() => preview(null)}
+            onChange={(e) => {
+              preview(null);
+              setName(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) return;
               if (e.key === "Enter" && save(name)) setName("");
@@ -80,11 +109,27 @@ export function PresetControls() {
             <Plus />
           </Button>
         </div>
-        <div className="preset-list">
-          {presets.map((p) => (
-            <div className="preset-row" key={p.id}>
+        <div
+          className="preset-list"
+          onPointerLeave={() => preview(null)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget))
+              preview(null);
+          }}
+        >
+          {thumbnails.map(({ preset: p, src }) => (
+            <div
+              className="preset-row"
+              data-active={active === p.id}
+              key={p.id}
+            >
               <button
                 className="preset-load"
+                aria-pressed={active === p.id}
+                onPointerEnter={(event) => {
+                  if (event.pointerType !== "touch") preview(p);
+                }}
+                onFocus={() => preview(p)}
                 onClick={() => {
                   load(p);
                   setOpen(false);
@@ -93,14 +138,22 @@ export function PresetControls() {
               >
                 <img
                   alt=""
-                  src={`data:image/svg+xml,${encodeURIComponent(serializeSvg(p.design, p.mode, p.design.color === "auto" ? "#2563eb" : p.design.color, p.selected))}`}
+                  src={src}
+                  className={
+                    p.design.color === "auto" && !p.design.gradient
+                      ? "preset-auto-ink"
+                      : undefined
+                  }
                 />
                 <span>{p.name}</span>
+                <Check className="preset-check" size={14} aria-hidden="true" />
               </button>
               <Button
                 variant="ghost"
                 size="icon-xs"
                 aria-label={`${t("deletePreset")} ${p.name}`}
+                onPointerEnter={() => preview(null)}
+                onFocus={() => preview(null)}
                 onClick={() => {
                   preview(null);
                   remove(p.id);

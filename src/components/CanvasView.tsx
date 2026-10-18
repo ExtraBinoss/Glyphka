@@ -1,93 +1,72 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { lazy, Suspense, useEffect } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { AnimatePresence, m } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Box } from "lucide-react";
+import { ArrowLeft, Box, Scan } from "lucide-react";
 import {
   designAtom,
   renderDesignAtom,
+  previewDesignAtom,
   modeAtom,
   selectedGlyphAtom,
   guidesAtom,
   zoomAtom,
   viewAtom,
   threeMountedAtom,
+  threeApiAtom,
+  threeDisplacedAtom,
+  canvasModeAtom,
+  canvasViewAtom,
+  canvasSelectedGlyphAtom,
 } from "@/state/studio";
 import { buildMesh } from "@/engine/mesh-service";
 import { loadThree } from "@/lib/preload-three";
-import type { Mode } from "@/engine/model";
+import { useCanvasViewport } from "@/lib/use-canvas-viewport";
+import { backToLettering } from "@/lib/use-studio-navigation";
 import { Lettering } from "./Drawing";
 import { ShapeCanvas } from "./ShapeCanvas";
 import { Button } from "./ui/button";
 const ThreeView = lazy(loadThree);
+const MotionButton = m.create(Button);
 export function CanvasView() {
-  const mode = useAtomValue(modeAtom),
+  const mode = useAtomValue(canvasModeAtom),
+    editorMode = useAtomValue(modeAtom),
     setMode = useSetAtom(modeAtom),
     design = useAtomValue(renderDesignAtom),
+    preview = useAtomValue(previewDesignAtom),
     savedDesign = useAtomValue(designAtom),
-    selected = useAtomValue(selectedGlyphAtom),
+    selected = useAtomValue(canvasSelectedGlyphAtom),
+    savedSelected = useAtomValue(selectedGlyphAtom),
     select = useSetAtom(selectedGlyphAtom),
     guides = useAtomValue(guidesAtom),
     zoom = useAtomValue(zoomAtom),
-    view = useAtomValue(viewAtom),
+    view = useAtomValue(canvasViewAtom),
+    editorView = useAtomValue(viewAtom),
     mounted = useAtomValue(threeMountedAtom),
+    threeApi = useAtomValue(threeApiAtom),
+    threeDisplaced = useAtomValue(threeDisplacedAtom),
     { t } = useTranslation();
-  const host = useRef<HTMLDivElement>(null),
-    panRef = useRef<Partial<Record<Mode, { x: number; y: number }>>>({}),
-    [pans, setPans] = useState<Partial<Record<Mode, { x: number; y: number }>>>(
-      {},
-    );
+  const { host, drawing, recenter, canRecenter } = useCanvasViewport(
+    editorMode,
+    zoom,
+    editorView,
+  );
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (mode !== "about") {
+      if (editorMode !== "about") {
         void loadThree().catch(() => {
           /* Explicit activation can retry. */
         });
-        void buildMesh(savedDesign, mode, selected, false).catch(() => {
-          /* Optional prewarm. */
-        });
+        void buildMesh(savedDesign, editorMode, savedSelected, false).catch(
+          () => {
+            /* Optional prewarm. */
+          },
+        );
       }
     }, 1200);
     return () => clearTimeout(timer);
-  }, [savedDesign, mode, selected]);
-  useEffect(() => {
-    const element = host.current!,
-      store = getDefaultStore();
-    const wheel = (event: WheelEvent) => {
-      event.preventDefault();
-      const old = store.get(zoomAtom),
-        delta =
-          event.deltaY *
-          (event.deltaMode === 1
-            ? 16
-            : event.deltaMode === 2
-              ? element.clientHeight
-              : 1);
-      const next = Math.round(
-        Math.max(25, Math.min(400, old * Math.exp(-delta * 0.0015))),
-      );
-      if (store.get(viewAtom) === "2d") {
-        const rect = element.getBoundingClientRect(),
-          currentMode = store.get(modeAtom),
-          pan = panRef.current[currentMode] ?? { x: 0, y: 0 },
-          x = event.clientX - rect.left - rect.width / 2,
-          y = event.clientY - rect.top - rect.height / 2;
-        panRef.current = {
-          ...panRef.current,
-          [currentMode]: {
-            x: pan.x + x * (100 / next - 100 / old),
-            y: pan.y + y * (100 / next - 100 / old),
-          },
-        };
-        setPans(panRef.current);
-      }
-      store.set(zoomAtom, Math.round(next));
-    };
-    element.addEventListener("wheel", wheel, { passive: false });
-    return () => element.removeEventListener("wheel", wheel);
-  }, []);
+  }, [savedDesign, editorMode, savedSelected]);
   const ink = design.color === "auto" ? "var(--foreground)" : design.color;
-  const pan = pans[mode] ?? { x: 0, y: 0 };
   return (
     <div
       ref={host}
@@ -105,11 +84,37 @@ export function CanvasView() {
               variant="ghost"
               size="sm"
               aria-label={t("backToWordmark")}
-              onClick={() => setMode("wordmark")}
+              onClick={backToLettering}
             >
               <ArrowLeft />
               {t("back")}
             </Button>
+          </m.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {(view === "2d" ? canRecenter : threeDisplaced) && (
+          <m.div
+            className="canvas-recenter"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.16 }}
+          >
+            <MotionButton
+              variant="outline"
+              size="sm"
+              onTap={(event) => {
+                if ("pointerType" in event && event.pointerType === "touch") {
+                  if (view === "2d") recenter();
+                  else threeApi?.recenter();
+                }
+              }}
+              onClick={view === "2d" ? recenter : () => threeApi?.recenter()}
+            >
+              <Scan />
+              {t("recenterView")}
+            </MotionButton>
           </m.div>
         )}
       </AnimatePresence>
@@ -140,23 +145,25 @@ export function CanvasView() {
         {view === "2d" && (
           <m.div
             className="drawing-area"
-            key={mode}
+            key={editorMode}
             data-mode={mode}
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            initial={preview ? false : { opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.28 }}
+            transition={{ duration: preview ? 0 : 0.28 }}
           >
             <div
+              ref={drawing}
               className="drawing-scale"
               style={{
-                transform: `scale(${zoom / 100}) translate(${pan.x}px, ${pan.y}px)`,
+                transform: `scale(${zoom / 100})`,
               }}
             >
               {mode === "shapes" ? (
                 <ShapeCanvas ink={ink} />
               ) : design.text ? (
                 <Lettering
+                  morph={preview === null}
                   design={design}
                   ink={ink}
                   livePaint

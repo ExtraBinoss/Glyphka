@@ -59,7 +59,7 @@ function measure(
   }
   record(operation, times);
 }
-measure("2D drawing · 6 letters · 16 families", 1000, (i) =>
+measure(`2D drawing · 6 letters · ${FAMILIES.length} families`, 1000, (i) =>
   buildDrawing(samples[i % samples.length]),
 );
 measure("2D drawing · 36 letters", 500, (i) =>

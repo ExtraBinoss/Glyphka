@@ -9,8 +9,18 @@ export function generateVariations(design: Design, seed: number): Design[] {
     const j = Math.floor(rng() * (i + 1));
     [families[i], families[j]] = [families[j], families[i]];
   }
-  return families.slice(0, 4).map((family, index) => ({
-    ...randomizeDesign(design, (seed + index * 43) % 999999),
-    family,
-  }));
+  return families.slice(0, 4).map((family, index) => {
+    const variant = randomizeDesign(design, (seed + index * 43) % 999999);
+    return {
+      ...variant,
+      family,
+      render: {
+        ...variant.render,
+        rotationX: 0,
+        rotationY: 0,
+        rotationZ: 0,
+        autoRotate: false,
+      },
+    };
+  });
 }

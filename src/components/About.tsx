@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { DEFAULT_DESIGN } from "@/engine/model";
 import { designAtom, selectedGlyphAtom } from "@/state/studio";
 import { Lettering } from "./Drawing";
+import { CreditsDialog } from "./CreditsDialog";
 import { Preferences } from "./Preferences";
 import s from "@/styles/about.module.css";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -62,24 +63,18 @@ export function About() {
                 }
               >
                 <img
+                  className={s.plinka}
                   src="/plinka.svg"
                   alt=""
-                  width="28"
-                  height="28"
+                  width="38"
+                  height="24"
                   decoding="async"
                 />
               </TooltipTrigger>
               <TooltipContent>Plinka</TooltipContent>
             </Tooltip>
           </div>
-          <a
-            className={s.credits}
-            href="/licenses/NOTICE.txt"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t("credits")}
-          </a>
+          <CreditsDialog triggerClassName={s.credits} />
         </footer>
       </div>
       <m.div
@@ -102,7 +97,7 @@ export function About() {
         rel="noreferrer"
         aria-label="Glyphka · Plinka"
       >
-        glyphka.
+        Glyphka.
       </a>
     </m.section>
   );

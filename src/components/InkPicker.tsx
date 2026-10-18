@@ -15,6 +15,8 @@ import { Button } from "./ui/button";
 import { GradientEditor } from "./GradientEditor";
 import { DEFAULT_GRADIENT, gradientCss } from "@/engine/paint";
 import { ControlHint } from "./ControlHint";
+import { useColorPickerI18n } from "./useColorPickerI18n";
+import { addPaletteColorAtom, paletteAtom } from "@/state/palette";
 import {
   Popover,
   PopoverContent,
@@ -30,33 +32,18 @@ import {
 } from "./ui/dropdown-menu";
 const COLORS = ["auto", "#2563eb", "#ff5a1f", "#a855f7", "#22a78b", "#f43f5e"];
 export function InkPicker() {
+  const pickerI18n = useColorPickerI18n();
   const design = useAtomValue(paintAtom),
     edit = useSetAtom(editAtom),
     preview = useSetAtom(previewColorAtom),
     commit = useSetAtom(commitPaintAtom),
     end = useSetAtom(endGestureAtom),
-    { t, i18n } = useTranslation();
-  const [custom, setCustom] = useState<string[]>(() => {
-    try {
-      const value: unknown = JSON.parse(
-        localStorage.getItem("glyphka.palette") || "[]",
-      );
-      return Array.isArray(value)
-        ? value
-            .filter(
-              (x): x is string =>
-                typeof x === "string" && /^#[\da-f]{6}$/i.test(x),
-            )
-            .slice(0, 18)
-        : [];
-    } catch {
-      return [];
-    }
-  });
+    { t } = useTranslation();
+  const custom = useAtomValue(paletteAtom),
+    addColor = useSetAtom(addPaletteColorAtom);
   const [open, setOpen] = useState(false),
     lastGradient = useRef(design.gradient ?? DEFAULT_GRADIENT);
-  const fr = i18n.language === "fr",
-    solid = !design.gradient;
+  const solid = !design.gradient;
   const background = design.gradient
     ? gradientCss(design.gradient)
     : design.color === "auto"
@@ -66,13 +53,7 @@ export function InkPicker() {
     commit();
     const color = design.color === "auto" ? "#2563eb" : design.color;
     if (![...COLORS, ...custom].includes(color)) {
-      const next = [...custom, color].slice(-18);
-      setCustom(next);
-      try {
-        localStorage.setItem("glyphka.palette", JSON.stringify(next));
-      } catch {
-        /* Optional persistence. */
-      }
+      addColor(color);
     }
     setOpen(false);
     end();
@@ -171,26 +152,13 @@ export function InkPicker() {
                       commit();
                       end();
                     }}
-                    i18n={{
-                      labels: {
-                        panelLabel: t("custom"),
-                        area: fr
-                          ? "Saturation et luminosité"
-                          : "Saturation and brightness",
-                        hue: fr ? "Teinte" : "Hue",
-                        hex: fr ? "Code hexadécimal" : "Hex color",
-                        copy: fr ? "Copier la couleur" : "Copy color",
-                        eyeDropper: fr
-                          ? "Prélever une couleur"
-                          : "Pick a color",
-                      },
-                    }}
+                    i18n={pickerI18n}
                   >
                     <ColorPickerPanel />
                   </ColorPicker>
                   <Button className="add-swatch" size="sm" onClick={add}>
                     <Plus />
-                    {fr ? "Ajouter à la palette" : "Add to palette"}
+                    {t("addToPalette")}
                   </Button>
                 </>
               ) : (

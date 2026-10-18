@@ -256,6 +256,46 @@ export function glyphMarks(char: string, design: Design, variant = 0): Mark[] {
       stroke: family === "fold" ? 8 : 4,
       cutout: true,
     });
+  // Bounded path treatments preserve editable vector geometry in every renderer.
+  const cut = (d: string, stroke?: number) =>
+    marks.push({ d, stroke, cutout: true });
+  switch (family) {
+    case "duplex":
+      marks.push(
+        ...marks
+          .filter((mark) => mark.stroke && !mark.cutout)
+          .map((mark) => ({
+            ...mark,
+            stroke: mark.stroke! * 0.34,
+            cutout: true,
+          })),
+      );
+      break;
+    case "segmented":
+      cut("M-10 33H108M-10 64H108", 5);
+      break;
+    case "notched":
+      cut("M2 29L25 39L2 49ZM87 46L63 57L87 68Z");
+      break;
+    case "woven":
+      cut("M-15 62L104 8M-15 92L104 38", 7);
+      break;
+    case "prism":
+      cut("M-12 89L99 23", 3.5);
+      break;
+    case "terminal":
+      for (const mark of marks.filter((item) => item.stroke && !item.cutout)) {
+        const start = mark.d.match(/^M(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/);
+        if (start) dot(Number(start[1]), Number(start[2]), w * 0.78);
+      }
+      break;
+    case "raster":
+      cut("M-10 24H108M-10 36H108M-10 48H108M-10 60H108M-10 72H108", 3);
+      break;
+    case "crosscut":
+      cut("M-8 14L101 88M-8 88L101 14", 5);
+      break;
+  }
   if (cutouts > 0 && ![" ", ".", "-", "+"].includes(char)) {
     if (cutouts >= 15)
       dot(
@@ -295,7 +335,7 @@ export function glyphMarks(char: string, design: Design, variant = 0): Mark[] {
       design.seed + generation * 913 + char.charCodeAt(0),
       design.mutation + Math.min(70, generation * 11),
       !!mark.stroke && !mark.cutout,
-      family === "circuit",
+      family === "circuit" || family === "prism",
     ),
     stroke:
       mark.stroke && !mark.cutout
