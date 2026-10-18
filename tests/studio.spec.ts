@@ -185,7 +185,7 @@ test("exports actual standalone SVG and transparent PNG", async ({ page }) => {
   await page.getByRole("button", { name: "Export", exact: true }).click();
   const [pngDownload] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "PNG 2×", exact: true }).click(),
+    page.getByRole("button", { name: "PNG", exact: true }).click(),
   ]);
   const png = await readFile((await pngDownload.path())!);
   expect(png.subarray(1, 4).toString()).toBe("PNG");
