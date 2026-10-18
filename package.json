@@ -20,10 +20,11 @@
     "assets:social": "bun run scripts/render-social.ts && oxfmt artwork/social.html artwork/social/index.html",
     "check": "bun run typecheck && bun run lint && bun run format:check && bun run test && bun run build",
     "format": "oxfmt .",
-    "deploy": "wrangler pages deploy dist --project-name glyphka-plinka --branch main",
+    "deploy": "wrangler deploy",
     "lint:oxlint": "oxlint .",
     "lint:react": "eslint . --max-warnings 0",
-    "format:check": "oxfmt --check ."
+    "format:check": "oxfmt --check .",
+    "deploy:check": "wrangler deploy --dry-run"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

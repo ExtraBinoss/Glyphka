@@ -1,6 +1,17 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "glyphka-plinka",
-  "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-10-17",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "glyphka.plinka.eu",
+      "custom_domain": true,
+    },
+  ],
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+  },
 }
